@@ -93,12 +93,13 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
-[size=3][b]1.12.1[/b][/size]
+[size=3][b]1.12.1 – 1.12.2[/b][/size]
 [list]
 [*]For a mod that's on both this site and Nexus, updates are only offered after both versions are checked, from whichever is higher, and never when yours is the same version or newer
 [*]Browse mods shows Update ready by version number, and counts a mod you installed from Nexus as installed
 [*]Update buttons on Nexus mods update from this site when it has the higher version
 [*]Subscriptions don't reinstall the same version when a file is uploaded again
+[*]A tidier status box: the Game row is gone
 [/list]
 [size=3][b]1.12.0[/b][/size]
 [list]
