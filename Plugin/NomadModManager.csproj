@@ -4,6 +4,10 @@
     <RootNamespace>NomadModManager</RootNamespace>
   </PropertyGroup>
   <!-- dotnet build -p:NexusEdition=true: the build for Nexus Mods (see Edition.cs). -->
+  <!-- dotnet build -p:TestKey=true: a private test build that can use a personal Nexus API key. Never released. -->
+  <PropertyGroup Condition="'$(TestKey)' == 'true'">
+    <DefineConstants>$(DefineConstants);NEXUS_TESTKEY</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(NexusEdition)' == 'true'">
     <DefineConstants>$(DefineConstants);NEXUS_EDITION</DefineConstants>
   </PropertyGroup>

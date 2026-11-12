@@ -46,6 +46,12 @@ namespace NomadModManager
         public static bool CanSignIn => ClientId.Length > 0;
         public static bool SignedIn => _access.Length > 0 || _apiKey.Length > 0;
         public static bool UsingTestKey => _apiKey.Length > 0;
+        /// <summary>A private test build (-p:TestKey=true): a personal API key can be used. Never in a released build (Nexus doesn't allow personal keys in public apps).</summary>
+#if NEXUS_TESTKEY
+        public const bool TestBuild = true;
+#else
+        public const bool TestBuild = false;
+#endif
         public static string UserName { get; private set; } = "";
         public static bool Premium { get; private set; }
         public static bool SigningIn { get; private set; }
@@ -67,7 +73,7 @@ namespace NomadModManager
             {
                 if (!File.Exists(FilePath)) return;
                 var j = JObject.Parse(File.ReadAllText(FilePath));
-                _access = (string)j["access"] ?? ""; _refresh = (string)j["refresh"] ?? ""; _apiKey = (string)j["apikey"] ?? "";
+                _access = (string)j["access"] ?? ""; _refresh = (string)j["refresh"] ?? ""; _apiKey = TestBuild ? (string)j["apikey"] ?? "" : "";
                 _expiresAt = (long?)j["expires"] ?? 0;
                 UserName = (string)j["name"] ?? ""; Premium = (bool?)j["premium"] ?? false;
             }
@@ -186,6 +192,7 @@ namespace NomadModManager
             try { done?.Invoke(ok, msg); } catch { }
         }
 
+#if NEXUS_TESTKEY
         /// <summary>For testing before Nexus registers the app: the player's personal API key (from nexusmods.com › Site preferences › API keys), from the clipboard.</summary>
         public static IEnumerator UseTestKey(string key, Action<bool, string> done)
         {
@@ -200,6 +207,8 @@ namespace NomadModManager
             Activity.Add("Signed in to Nexus Mods (personal API key, for testing) as " + UserName);
             done(true, "Signed in to Nexus Mods as " + UserName + " with your personal API key (for testing).");
         }
+
+#endif
 
         /// <summary>Reads Nexus's token answer: the tokens, when they run out, and who signed in (from the token itself).</summary>
         private static bool Take(JObject t)

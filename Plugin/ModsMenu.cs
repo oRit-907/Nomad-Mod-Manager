@@ -1285,7 +1285,7 @@ namespace NomadModManager
                 line = "Signed in as " + NexusAccount.UserName + (NexusAccount.Premium ? " (Premium)" : "") + (NexusAccount.UsingTestKey ? ", with your personal API key (for testing)" : "") + ". Endorse and Track work on mod pages.";
             else if (NexusAccount.SigningIn) line = NexusAccount.Status;
             else if (NexusAccount.CanSignIn) line = "Sign in to endorse and track mods from the game. You sign in on Nexus's own page; the Mods menu never sees your password.";
-            else line = "Sign in with Nexus is waiting for Nexus Mods to approve the Mods menu. For testing, copy your personal API key from Nexus (Site preferences › API keys).";
+            else line = "Test build: copy your personal API key from Nexus (Site preferences › API keys), then press Use key from clipboard.";
             if (!NexusAccount.SignedIn && !NexusAccount.SigningIn && NexusAccount.Status.Length > 0) line = NexusAccount.Status;
             Lbl(new Rect(tx, box.y + 38 * _s, box.width - bw * 2 - 60 * _s, box.height - 44 * _s), line, Tint(_wrapSmall, CMuted));
             var b1 = new Rect(right - bw, box.y + (box.height - 42 * _s) / 2, bw, 42 * _s);
@@ -1300,12 +1300,14 @@ namespace NomadModManager
                 if (Btn(b1, "Sign in with Nexus", true))
                     _host.StartCoroutine(NexusAccount.SignIn((ok, msg) => { Toast(msg, ok); _nexusListsAsked = false; }));
             }
+#if NEXUS_TESTKEY
             else if (Btn(b1, "Use key from clipboard", false))
             {
                 string key = "";
                 try { key = GUIUtility.systemCopyBuffer ?? ""; } catch { }
                 _host.StartCoroutine(NexusAccount.UseTestKey(key, (ok, msg) => { Toast(msg, ok); _nexusListsAsked = false; }));
             }
+#endif
         }
 
         private void OpenOwnSettings()
@@ -1348,7 +1350,8 @@ namespace NomadModManager
 
             // The Mods menu's own settings start with the Nexus account.
             var shift = 0f;
-            if (own) { DrawNexusAccount(new Rect(r.x, r.y + 120 * _s, r.width, 92 * _s)); shift = 104 * _s; }
+            // (only once Nexus has registered the app, or in a private test build)
+            if (own && (NexusAccount.CanSignIn || NexusAccount.SignedIn || NexusAccount.TestBuild)) { DrawNexusAccount(new Rect(r.x, r.y + 120 * _s, r.width, 92 * _s)); shift = 104 * _s; }
 
             // Find a setting: just start typing (name, description or section).
             var fr = new Rect(r.x, r.y + 120 * _s + shift, r.width, 42 * _s);
