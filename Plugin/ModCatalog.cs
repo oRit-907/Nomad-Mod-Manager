@@ -44,6 +44,7 @@ namespace NomadModManager
         public string NexusVersion = "";     // the newest version where it came from (Nexus or the website)
         public int SiteId, SiteVersionId;    // installed from the community website (nomaddrivemods.online)
         public int SiteLatestId;
+        public string SiteInstalledVersion = "";            // the website version that was installed (its DLL may say otherwise)
         public string UpdateFrom = "Nexus";
         // Both places a mod can come from, checked against each other:
         public string SiteLatest = "", NexusLatest = "";   // newest version on the website / on Nexus ("" = not there or not checked yet)
@@ -157,6 +158,12 @@ namespace NomadModManager
         public static bool IsHotReady(ModEntry m) => m.State == ModState.NeedsRestart && (m.Note.StartsWith("Starting") || m.Note == "Ready to start");
         public int UpdateCount => Mods.Count(m => m.UpdateAvailable && !m.UpdateStaged);
 
+        /// <summary>
+        /// Both places mods come from (the website and Nexus) have answered at least once. Until then no update is offered,
+        /// so a mod on both is only offered when its versions have been compared on both.
+        /// </summary>
+        public bool UpdatesChecked;
+
         // ------------------------------------------------------------------
         // Scan
 
@@ -228,6 +235,7 @@ namespace NomadModManager
                 {
                     // Installed from the community website: updates come from there.
                     m.SiteId = site.Id; m.SiteVersionId = site.VersionId; m.UpdateFrom = Community.HostName;
+                    m.SiteInstalledVersion = site.Version ?? "";
                     if (m.Version.Length == 0) m.Version = site.Version;
                     if (site.Author.Length > 0) m.Author = site.Author;
                     if (_site.TryGetValue(site.Id, out var latest))
@@ -250,6 +258,7 @@ namespace NomadModManager
                     m.UpdateAvailable = !m.IsSelf && IsNewer(nx.Version, m.Version);
                 }
                 if (!m.IsSelf) CrossCheck(m);
+                if (!UpdatesChecked) m.UpdateAvailable = false;   // (not until both checks are back)
                 m.Category = m.IsSelf ? "Tools & Frameworks"
                     : m.SiteId > 0 && _site.TryGetValue(m.SiteId, out var sm) ? sm.Category
                     : m.NexusId > 0 && _nexus.TryGetValue(m.NexusId, out var nn) && nn.Name.Length > 0 ? Categories.Classify(nn.Name, nn.Summary)
@@ -851,9 +860,12 @@ namespace NomadModManager
             m.SiteLatest = siteMod?.Version ?? "";
             m.NexusLatest = m.NexusId > 0 && _nexus.TryGetValue(m.NexusId, out var nx) ? nx.Version : "";
 
-            var siteNewer = siteMod != null && (m.SiteId > 0 ? Community.SiteNewer(siteMod.VersionId, siteMod.Version, m.SiteVersionId, m.Version)
-                                                             : ModVersion.IsNewer(siteMod.Version, m.Version));
-            var nexusNewer = m.NexusLatest.Length > 0 && ModVersion.IsNewer(m.NexusLatest, m.Version);
+            // What's installed: the higher of the DLL's own number and the version it was installed as (authors don't
+            // always change the DLL's number), so an update is only offered for a version higher than that.
+            var have = ModVersion.IsNewer(m.SiteInstalledVersion, m.Version) ? m.SiteInstalledVersion : m.Version;
+            var siteNewer = siteMod != null && (m.SiteId > 0 ? Community.SiteNewer(siteMod.VersionId, siteMod.Version, m.SiteVersionId, have)
+                                                             : ModVersion.IsNewer(siteMod.Version, have));
+            var nexusNewer = m.NexusLatest.Length > 0 && ModVersion.IsNewer(m.NexusLatest, have);
             if (siteNewer && nexusNewer)
             {
                 // Both are newer: take the newest. The same version on both: the website's (virus-scanned, installs right here).

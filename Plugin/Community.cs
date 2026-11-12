@@ -372,6 +372,8 @@ namespace NomadModManager
                                 ModManagerPlugin.Log.LogMessage($"Subscription {s.Name}: kept your installed {mine}, it's newer than the website's {s.Version}.");
                             continue;
                         }
+                        // The same version number (a file uploaded again): nothing to update.
+                        if (ModVersion.Same(mine.Length > 0 ? mine : have.Version, s.Version)) continue;
                     }
                     var ok = false; string msg = null;
                     yield return Install(s.Id, s.VersionId, (o, m) => { ok = o; msg = m; }, sub: true);

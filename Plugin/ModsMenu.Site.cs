@@ -182,11 +182,13 @@ namespace NomadModManager
         /// </summary>
         private void SiteStatus(Rect r, SiteMod m, string loaderLabel = null)
         {
-            var entry = _cat.SiteEntry(m.Id);
+            // Installed from here, or the same mod installed from Nexus.
+            var entry = _cat.SiteEntry(m.Id) ?? _cat.Mods.FirstOrDefault(e => e.AltSiteId == m.Id && e.State != ModState.WillRemove);
             if (ModEntry.IsLoaderName(m.Name)) { if (Btn(r, loaderLabel ?? (_bold.CalcSize(Lang.C(InstallLabel(m))).x + 24 * _s <= r.width ? InstallLabel(m) : "Check"), false)) { if (!Downloader.ShowCheck()) Toast("Install or repair BepInEx with Check BepInEx (get it on nomaddrivemods.online), with the game closed.", true); } return; }
             if (Community.Busy == m.Id) { StatusText(r, $"Installing… {Community.Progress * 100:0}%", CAccent); return; }
             if (entry != null && entry.UpdateStaged) { StatusText(r, entry.LiveLater ? "Press Reload to finish" : "Restart to finish", CWarn); return; }
-            if (entry != null && entry.SiteVersionId < m.VersionId) { StatusText(r, "Update ready", CWarn); return; }
+            // Only when a version is out that's higher than the installed one (from here or Nexus, whichever is higher).
+            if (entry != null && entry.UpdateAvailable) { StatusText(r, "Update ready", CWarn); return; }
             if (entry != null) StatusText(r, "Installed", CGood);
         }
 

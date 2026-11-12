@@ -372,36 +372,76 @@ namespace NomadModManager
 
         public bool CheckedUpdates => _checkedUpdates;
 
-        /// <summary>Asks Nexus about updates for the installed mods (on opening, or quietly at the main menu for the button's count).</summary>
+        private int _checksLeft;
+        private int _checkRound;
+
+        /// <summary>
+        /// Asks the website and Nexus about updates for the installed mods (on opening, or quietly at the main menu for the
+        /// button's count). A mod on both is offered only after both have answered, from whichever has the higher version;
+        /// when the installed copy is the same version or newer than both, no update is offered.
+        /// </summary>
         public void CheckUpdates()
         {
             _checkedUpdates = true;
             _cat.Refresh();
             if (SiteAccount.Has) _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.Refresh()));
+            var round = ++_checkRound;
+            _checksLeft = 2;   // the website, Nexus (plus a second Nexus look-up the website's answer may need)
+            void Done()
+            {
+                if (round != _checkRound || --_checksLeft > 0) return;
+                SettleUpdates();
+            }
             // The website: updates for mods from there, and its copies of mods installed from Nexus (it may have a newer version).
             _host.StartCoroutine(Community.Check(_cat.SiteIds.ToList(), mods =>
             {
                 foreach (var m in mods) _cat.SetSiteInfo(m);
                 _cat.Refresh();
-                var n = _cat.Mods.Count(x => x.UpdateFrom == Community.HostName && x.UpdateAvailable && !x.UpdateStaged);
-                if (n > 0) Toast($"{n} mod update(s) on {Community.HostName}.", true);
                 // Website mods linked to a Nexus page the Nexus check didn't know about yet.
                 var more = _cat.NexusIds.Where(id => !_cat.KnowsNexus(id)).ToList();
                 if (more.Count > 0)
+                {
+                    if (round == _checkRound) _checksLeft++;
                     _host.StartCoroutine(Nexus.Lookup(more, list =>
                     {
                         foreach (var x in list) _cat.SetNexusInfo(x.Id, x.Version, x.Author, x.Name, x.Summary);
                         _cat.Refresh();
+                        Done();
                     }));
+                }
+                Done();
             }, _cat.NexusOnlyIds.ToList(), _cat.NexusOnlyNames.ToList()));
             var ids = _cat.NexusIds.ToList();
-            if (ids.Count == 0) return;
-            _host.StartCoroutine(Nexus.Lookup(ids, mods =>
-            {
-                foreach (var m in mods) _cat.SetNexusInfo(m.Id, m.Version, m.Author, m.Name, m.Summary);
-                _cat.Refresh();
-                if (_cat.UpdateCount > 0) Toast($"{_cat.UpdateCount} mod update(s) on Nexus.", true);
-            }));
+            if (ids.Count == 0) Done();
+            else
+                _host.StartCoroutine(Nexus.Lookup(ids, mods =>
+                {
+                    foreach (var m in mods) _cat.SetNexusInfo(m.Id, m.Version, m.Author, m.Name, m.Summary);
+                    _cat.Refresh();
+                    Done();
+                }));
+            _host.StartCoroutine(SettleLater(round));
+        }
+
+        /// <summary>If one of the two never answers (offline, a site down), the other's updates are still offered after 30 s.</summary>
+        private System.Collections.IEnumerator SettleLater(int round)
+        {
+            var until = Time.realtimeSinceStartup + 30f;
+            while (Time.realtimeSinceStartup < until) yield return null;
+            if (round == _checkRound && _checksLeft > 0) { _checksLeft = 0; SettleUpdates(); }
+        }
+
+        /// <summary>Both answers are in: updates are offered, with one message saying where they're from.</summary>
+        private void SettleUpdates()
+        {
+            _cat.UpdatesChecked = true;
+            _cat.Refresh();
+            var waiting = _cat.Mods.Where(m => m.UpdateAvailable && !m.UpdateStaged).ToList();
+            if (waiting.Count == 0) return;
+            var site = waiting.Count(m => m.UpdateFrom == Community.HostName);
+            var nexus = waiting.Count - site;
+            var where = site > 0 && nexus > 0 ? $"{site} on {Community.HostName}, {nexus} on Nexus" : site > 0 ? "on " + Community.HostName : "on Nexus";
+            Toast(waiting.Count == 1 ? $"1 mod update {where}." : $"{waiting.Count} mod updates {(site > 0 && nexus > 0 ? "(" + where + ")" : where)}.", true);
         }
 
         private void RunSearch(bool more)
@@ -764,7 +804,7 @@ namespace NomadModManager
             var by = r.yMax - 52 * _s;
             var entry = _cat.Mods.FirstOrDefault(e => e.NexusId == m.Id);
             if (entry != null && entry.UpdateAvailable && !entry.UpdateStaged)
-            { if (Btn(new Rect(x, by, 112 * _s, 40 * _s), "Update", true)) InstallFromNexus(m.Id); }
+            { if (Btn(new Rect(x, by, 112 * _s, 40 * _s), "Update", true)) UpdateMod(entry); }   // from wherever the newer version is
             else if (_cat.IsInstalled(m.Id)) StatusText(new Rect(x, by, 112 * _s, 40 * _s), "Installed", CGood);
             else if (m.Id == Nexus.DownloaderModId) StatusText(new Rect(x, by, 112 * _s, 40 * _s), "Installed", CGood); // the app and this menu
             else if (Btn(new Rect(x, by, 112 * _s, 40 * _s), "Install", true)) InstallFromNexus(m.Id);
@@ -883,7 +923,7 @@ namespace NomadModManager
                 return hit;
             }
             var entry = _cat.Mods.FirstOrDefault(e => e.NexusId == m.Id);
-            if (entry != null && entry.UpdateAvailable && !entry.UpdateStaged) { if (B("Update", true, 120)) InstallFromNexus(m.Id); }
+            if (entry != null && entry.UpdateAvailable && !entry.UpdateStaged) { if (B("Update", true, 120)) UpdateMod(entry); }
             else if (_cat.IsInstalled(m.Id) || m.Id == Nexus.DownloaderModId) StatusText(new Rect(bx, by, 130 * _s, 42 * _s), "Installed", CGood);
             else if (B(missing.Count > 0 ? "Install with requirements" : "Install", true, missing.Count > 0 ? 270 : 120))
             {
