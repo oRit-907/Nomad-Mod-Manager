@@ -1,0 +1,3 @@
+<!-- Stops the Mods menu's Directory.Build.props (game libraries, no standard library) from applying to the browser,
+     which is a normal .NET Framework 4.8 app. -->
+<Project />
