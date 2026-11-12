@@ -24,7 +24,7 @@ namespace NomadModManager
     internal static class InGameBrowser
     {
         /// <summary>The browser version this menu uses: GitHub release browser-vX.Y.Z with NomadBrowser-X.Y.Z.zip.</summary>
-        public const string BrowserVersion = "1.0.2";
+        public const string BrowserVersion = "1.1.0";
         /// <summary>
         /// The Chromium bundle the browser runs on (CefSharp's version). While it stays the same, an update only fetches
         /// NomadBrowser-app-X.Y.Z.zip (the small browser app), not the whole 170 MB again.
@@ -183,9 +183,22 @@ namespace NomadModManager
         private static Thread _reader;
         private static string _token = "";
         private static readonly object Lock = new object();
-        private static byte[] _pixels;          // newest page picture, BGRA, bottom row first (as Unity wants)
+        // The page picture, BGRA, bottom row first (as Unity wants). The browser sends the whole picture once (and after a
+        // resize), then only the rows that changed; those are kept as a band (in Unity's rows) until the next Pump.
+        private static byte[] _pixels;
         private static int _pw, _ph;
-        private static bool _newPicture;
+        private static bool _newPicture, _wholePicture;
+        private static int _bandLow = int.MaxValue, _bandHigh;
+        private static readonly Dictionary<int, Texture2D> Strips = new Dictionary<int, Texture2D>();   // by height (powers of two)
+        private static readonly Dictionary<int, byte[]> StripBytes = new Dictionary<int, byte[]>();
+        private static bool _noCopyTexture, _checkedCopy;
+        private static int _gen;   // which start the reader thread belongs to (an old one's last words are ignored)
+
+        // Starting it again if it stops by itself (not when the menu closes it): at most 3 times in 2 minutes.
+        private static bool _wanted;
+        private static int _lastW = 1280, _lastH = 720;
+        private static readonly List<float> Restarts = new List<float>();
+        public static bool Restarting { get; private set; }
         private static readonly List<string> Events = new List<string>();   // (Queue<T> is stripped from the game)
 
         public static bool Running => _proc != null && !_proc.HasExited;
@@ -199,9 +212,16 @@ namespace NomadModManager
         /// <summary>Starts the browser on a page (or, if it's running, goes there).</summary>
         public static bool Open(string url, int width, int height, out string error)
         {
+            Restarts.Clear();
+            return Start(url, width, height, out error);
+        }
+
+        private static bool Start(string url, int width, int height, out string error)
+        {
             error = null;
+            _wanted = true; _lastW = width; _lastH = height;
             if (Running && Connected) { Send("nav " + url); return true; }
-            Close();
+            Stop();
             if (!Installed) { error = "The browser isn't downloaded yet."; return false; }
             try
             {
@@ -212,17 +232,26 @@ namespace NomadModManager
                 var bytes = new byte[16]; rnd.GetBytes(bytes);
                 _token = string.Concat(bytes.Select(b => b.ToString("x2")).ToArray());
                 Directory.CreateDirectory(DataDir);
-                var args = $"--port {port} --token {_token} --data \"{DataDir}\" --url \"{url.Replace("\"", "%22")}\" --size {width} {height}";
+                int pid; using (var me = Process.GetCurrentProcess()) pid = me.Id;
+                var args = $"--port {port} --token {_token} --data \"{DataDir}\" --url \"{url.Replace("\"", "%22")}\" --size {width} {height} --parent {pid}";
                 _proc = Process.Start(new ProcessStartInfo(Exe, args) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Dir });
                 Url = url; Title = ""; Loading = true;
-                _reader = new Thread(Read) { IsBackground = true, Name = "NomadBrowser" };
+                int gen; lock (Lock) gen = ++_gen;
+                _reader = new Thread(() => Read(gen)) { IsBackground = true, Name = "NomadBrowser" };
                 _reader.Start();
                 return true;
             }
-            catch (Exception e) { error = e.Message; Close(); return false; }
+            catch (Exception e) { error = e.Message; Stop(); return false; }
         }
 
+        /// <summary>Closes the browser (the menu closed it, or the game is quitting).</summary>
         public static void Close()
+        {
+            _wanted = false; Restarting = false;
+            Stop();
+        }
+
+        private static void Stop()
         {
             try { Send("quit"); } catch { }
             try { _net?.Close(); } catch { }
@@ -231,7 +260,14 @@ namespace NomadModManager
             var p = _proc;
             _net = null; _client = null; _listener = null; _proc = null;
             if (p != null) new Thread(() => { try { if (!p.WaitForExit(3000)) p.Kill(); } catch { } }) { IsBackground = true }.Start();
-            lock (Lock) { _pixels = null; _newPicture = false; Events.Clear(); }
+            lock (Lock) { _gen++; _pixels = null; _newPicture = false; _wholePicture = false; _bandLow = int.MaxValue; _bandHigh = 0; Events.Clear(); }
+        }
+
+        /// <summary>The page's size in pixels (kept, so a restart opens at the same size).</summary>
+        public static void Resize(int width, int height)
+        {
+            _lastW = width; _lastH = height;
+            Send($"size {width} {height}");
         }
 
         public static void Send(string line)
@@ -242,7 +278,7 @@ namespace NomadModManager
             try { lock (net) net.Write(b, 0, b.Length); } catch { }
         }
 
-        private static void Read()
+        private static void Read(int gen)
         {
             try
             {
@@ -256,7 +292,7 @@ namespace NomadModManager
                 var net = client.GetStream();
                 var hello = ReadLine(net);
                 if (hello != "hello " + _token) { client.Close(); throw new IOException("Something else connected to the browser's port."); }
-                _client = client; _net = net;
+                lock (Lock) { if (gen != _gen) { client.Close(); return; } _client = client; _net = net; }
                 var head = new byte[5];
                 while (true)
                 {
@@ -268,19 +304,35 @@ namespace NomadModManager
                     if (head[0] == 1 && len >= 8)
                     {
                         var w = BitConverter.ToInt32(data, 0); var h = BitConverter.ToInt32(data, 4);
-                        if (w * h * 4 + 8 != len) continue;
+                        if (w <= 0 || h <= 0 || (long)w * h * 4 + 8 != len) continue;
                         // The browser's rows come top first; Unity's textures start at the bottom row (flipped here, off the main thread).
                         var px = new byte[w * h * 4];
                         var row = w * 4;
                         for (var y = 0; y < h; y++) Buffer.BlockCopy(data, 8 + y * row, px, (h - 1 - y) * row, row);
-                        lock (Lock) { _pixels = px; _pw = w; _ph = h; _newPicture = true; }
+                        lock (Lock) { if (gen != _gen) return; _pixels = px; _pw = w; _ph = h; _newPicture = true; _wholePicture = true; }
                     }
-                    else if (head[0] == 2) lock (Lock) Events.Add(Encoding.UTF8.GetString(data));
+                    else if (head[0] == 3 && len >= 16)
+                    {
+                        // Just the rows that changed: into the picture, and the band to upload grows to cover them.
+                        int w = BitConverter.ToInt32(data, 0), h = BitConverter.ToInt32(data, 4), top = BitConverter.ToInt32(data, 8), rows = BitConverter.ToInt32(data, 12);
+                        var row = w * 4;
+                        if (w <= 0 || h <= 0 || top < 0 || rows <= 0 || top + rows > h || (long)rows * row + 16 != len) continue;
+                        lock (Lock)
+                        {
+                            if (gen != _gen) return;
+                            if (_pixels == null || _pw != w || _ph != h) continue;   // a resize is on its way as a whole picture
+                            for (var y = 0; y < rows; y++) Buffer.BlockCopy(data, 16 + y * row, _pixels, (h - 1 - (top + y)) * row, row);
+                            _bandLow = Math.Min(_bandLow, h - (top + rows));
+                            _bandHigh = Math.Max(_bandHigh, h - top);
+                            _newPicture = true;
+                        }
+                    }
+                    else if (head[0] == 2) lock (Lock) { if (gen != _gen) return; Events.Add(Encoding.UTF8.GetString(data)); }
                 }
             }
             catch (Exception e)
             {
-                lock (Lock) Events.Add("closed " + e.Message);
+                lock (Lock) if (gen == _gen) Events.Add("closed " + e.Message);
             }
         }
 
@@ -301,22 +353,32 @@ namespace NomadModManager
         /// <summary>Call every frame while the browser shows: updates the picture and returns the events that came in.</summary>
         public static List<string> Pump()
         {
-            byte[] px = null; int w = 0, h = 0;
             var events = new List<string>();
             lock (Lock)
             {
-                if (_newPicture) { px = _pixels; w = _pw; h = _ph; _newPicture = false; }
+                if (_newPicture) Upload();
                 events.AddRange(Events); Events.Clear();
             }
-            if (px != null)
+            for (var i = 0; i < events.Count; i++)
             {
-                if (Texture == null || Texture.width != w || Texture.height != h)
+                var e = events[i];
+                // It stopped by itself (crashed, or Windows closed it): start it again on the same page, a few times.
+                if (e.StartsWith("closed ") && _wanted)
                 {
-                    if (Texture != null) UnityEngine.Object.Destroy(Texture);
-                    Texture = new Texture2D(w, h, TextureFormat.BGRA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                    var now = Time.unscaledTime;
+                    Restarts.RemoveAll(t => now - t > 120f);
+                    if (Restarts.Count < 3)
+                    {
+                        Restarts.Add(now);
+                        ModManagerPlugin.Log.LogWarning("In-game browser stopped (" + e.Substring(7) + "); starting it again on " + Url);
+                        Restarting = true;
+                        var url = Url.Length > 0 ? Url : "https://www.nexusmods.com/games/" + Nexus.GameDomain + "/mods";
+                        if (Start(url, _lastW, _lastH, out var err)) { events.RemoveAt(i--); continue; }
+                        e = events[i] = "closed " + err;
+                    }
+                    Restarting = false;
                 }
-                Texture.LoadRawTextureData(px);
-                Texture.Apply(false);
+                if (e == "ready") Restarting = false;
             }
             foreach (var e in events)
             {
@@ -331,6 +393,64 @@ namespace NomadModManager
                 else if (e.StartsWith("account ")) Account = e.Substring(8).Trim();
             }
             return events;
+        }
+
+        /// <summary>
+        /// The new picture onto the texture (under Lock). A band of changed rows goes up on its own, through a small strip
+        /// texture copied into place on the graphics card; a whole picture, or a band of most of the page, is uploaded whole.
+        /// </summary>
+        private static void Upload()
+        {
+            int w = _pw, h = _ph, row = w * 4;
+            if (_pixels == null || w <= 0 || h <= 0) return;
+            if (!_checkedCopy)
+            {
+                _checkedCopy = true;
+                try { if ((SystemInfo.copyTextureSupport & UnityEngine.Rendering.CopyTextureSupport.Basic) == 0) _noCopyTexture = true; } catch { _noCopyTexture = true; }
+            }
+            var whole = _wholePicture || Texture == null || Texture.width != w || Texture.height != h || _noCopyTexture;
+            var low = Math.Max(0, _bandLow); var rows = Math.Min(h, _bandHigh) - low;
+            if (!whole && rows <= 0) { _newPicture = false; return; }
+            if (!whole && rows > h * 6 / 10) whole = true;
+            if (!whole)
+            {
+                var stripH = 16;
+                while (stripH < rows) stripH *= 2;
+                if (stripH > h) stripH = h;
+                try
+                {
+                    if (!Strips.TryGetValue(stripH, out var strip) || strip == null || strip.width != w)
+                    {
+                        if (strip != null) UnityEngine.Object.Destroy(strip);
+                        strip = Strips[stripH] = new Texture2D(w, stripH, TextureFormat.BGRA32, false);
+                        StripBytes[stripH] = new byte[row * stripH];
+                    }
+                    var bytes = StripBytes[stripH];
+                    Buffer.BlockCopy(_pixels, low * row, bytes, 0, rows * row);
+                    strip.LoadRawTextureData(bytes);
+                    strip.Apply(false);
+                    Graphics.CopyTexture(strip, 0, 0, 0, 0, w, rows, Texture, 0, 0, 0, low);
+                }
+                catch (Exception e)
+                {
+                    // (a graphics card or game build without texture copies: whole pictures from now on)
+                    _noCopyTexture = true; whole = true;
+                    ModManagerPlugin.Log.LogInfo("In-game browser: uploading whole pictures (" + e.Message + ")");
+                }
+            }
+            if (whole)
+            {
+                if (Texture == null || Texture.width != w || Texture.height != h)
+                {
+                    if (Texture != null) UnityEngine.Object.Destroy(Texture);
+                    Texture = new Texture2D(w, h, TextureFormat.BGRA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                    foreach (var t in Strips.Values) if (t != null) UnityEngine.Object.Destroy(t);
+                    Strips.Clear(); StripBytes.Clear();
+                }
+                Texture.LoadRawTextureData(_pixels);
+                Texture.Apply(false);
+            }
+            _newPicture = false; _wholePicture = false; _bandLow = int.MaxValue; _bandHigh = 0;
         }
 
         /// <summary>The Nexus mod id in a Nexus address (…/nomaddrive/mods/123…), or 0.</summary>

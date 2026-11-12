@@ -259,13 +259,14 @@ namespace NomadModManager
             if (_capturing != null && kb != null) { CaptureKey(kb); return; }
             if (kb != null && kb.escapeKey.wasPressedThisFrame)
             {
+                if (_browserOpen && BrowserDismiss()) return;
                 if (_editing != null) { _editing = null; return; }
                 if (_naming) { _naming = false; return; }
                 if (_packNaming) { _packNaming = false; return; }
                 Back();
                 return;
             }
-            if (_browserOpen) { BrowserInput(kb); return; }   // the page gets the mouse and keys
+            if (_browserOpen && BrowserInput(kb, pad)) return;   // the page gets the mouse, keys and controller
 
             try
             {

@@ -12,6 +12,11 @@ name: Browser release
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build and test only (no release)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -45,6 +50,15 @@ jobs:
           foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') { Copy-Item "$env:WINDIR\System32\$dll" $out }
           Get-ChildItem $out -Recurse -Include *.pdb, *.xml | Remove-Item
           Get-ChildItem "$out/locales" -File | Where-Object Name -ne 'en-US.pak' | Remove-Item
+          # The browser draws in software (SetOffScreenRenderingBestPerformanceArgs turns the GPU off), so Chromium's GPU
+          # libraries (DirectX shader compilers, SwiftShader, Vulkan; about 39 MB) aren't needed.
+          foreach ($f in 'dxcompiler.dll', 'dxil.dll', 'd3dcompiler_47.dll', 'vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll') { Remove-Item "$out/$f" -ErrorAction SilentlyContinue }
+          # Check it still starts and paints without them before anything is released.
+          $smoke = Start-Process "$out/NomadBrowser.exe" -ArgumentList '--smoke-test' -WorkingDirectory $out -PassThru -RedirectStandardOutput smoke.txt
+          $null = $smoke.Handle   # (keeps the exit code readable after it ends)
+          if (-not $smoke.WaitForExit(120000)) { $smoke.Kill(); throw "The smoke test didn't finish in 2 minutes." }
+          Write-Host "Smoke test: exit $($smoke.ExitCode) $(Get-Content smoke.txt -Raw)"
+          if ($smoke.ExitCode -ne 0) { throw "NomadBrowser didn't paint a test page (exit $($smoke.ExitCode))." }
           $exe = Get-Item "$out/NomadBrowser.exe"
           Write-Host "NomadBrowser $v, $([math]::Round((Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)) MB unpacked"
           $zip = "NomadBrowser-$v.zip"
@@ -63,7 +77,12 @@ jobs:
           "app=$app" >> $env:GITHUB_OUTPUT
           "sha=$hash" >> $env:GITHUB_OUTPUT
 
+      - name: Sizes
+        shell: pwsh
+        run: Get-ChildItem NomadBrowser-*.zip | ForEach-Object { Write-Host "$($_.Name): $([math]::Round($_.Length / 1MB, 1)) MB" }
+
       - name: Release
+        if: ${{ !inputs.dry_run }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

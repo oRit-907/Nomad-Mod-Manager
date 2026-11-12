@@ -187,7 +187,15 @@ namespace NomadModManager
         // ------------------------------------------------------------------ watching the Downloads folder
 
         /// <summary>From Tick, every frame while the panel shows: once a second, a finished new download in the Downloads folder.</summary>
-        private void BrowserInput(UnityEngine.InputSystem.Keyboard kb)
+        private bool BrowserInput(UnityEngine.InputSystem.Keyboard kb, UnityEngine.InputSystem.Gamepad pad)
+        {
+            WatchDownloads();
+            return false;   // the panel's buttons work with the controller like the rest of the menu
+        }
+
+        private bool BrowserDismiss() => false;
+
+        private void WatchDownloads()
         {
             if (!_browserOpen || _browserInstalling || _browserNow.ModId == 0 || Time.unscaledTime < _nextWatch) return;
             _nextWatch = Time.unscaledTime + 1f;

@@ -15,11 +15,17 @@ namespace NomadBrowser
 {
     /// <summary>
     /// The Mods menu's in-game browser. Started by the menu with:
-    ///   NomadBrowser.exe --port N --token T --data DIR --url URL --size W H
+    ///   NomadBrowser.exe --port N --token T --data DIR --url URL --size W H [--parent PID]
     /// It connects to the menu on 127.0.0.1:N, says the token, then:
-    ///   to the menu:   [1][int len][int w][int h][w*h*4 bytes BGRA]  a new picture of the page
-    ///                  [2][int len][UTF-8 line]                       events: url, title, state, dl-start, dl-progress, dl-done, dl-error, log
-    ///   from the menu: UTF-8 lines: nav, size, move, down, up, wheel, key, char, back, fwd, reload, stop, focus, quit
+    ///   to the menu:   [1][int len][int w][int h][w*h*4 bytes BGRA]               the whole page picture (first one, and after a resize)
+    ///                  [3][int len][int w][int h][int y][int rows][rows*w*4 bytes] just the rows that changed (full width)
+    ///                  [2][int len][UTF-8 line]                                    events: url, title, state, dl-start, dl-progress,
+    ///                                                                              dl-done, dl-error, log, account, blocked, ctx
+    ///   from the menu: UTF-8 lines: nav, size, move, leave, down, up, wheel, key, char, focus, back, fwd, reload, stop,
+    ///                  copy, cut, paste, selectall, undo, redo, copylink, quit
+    /// Pages stay on Nexus Mods and Nomad Drive Mods (and the sign-in pages they use): a link anywhere else isn't opened
+    /// here, the menu is told ("blocked URL") and offers to open it in the player's own web browser.
+    ///   NomadBrowser.exe --smoke-test  starts Chromium, draws a test page and exits 0 if it painted (used by the release build).
     /// Downloads go to DIR\downloads. A finished one that's a .7z/.rar/… is repacked into a plain .zip (the game can only
     /// unpack .zip); programs (.exe, .msi, …) are left out. The menu installs the file; this process never touches the game.
     /// It closes when the menu disconnects (the game quit or the menu closed the browser).
@@ -38,11 +44,15 @@ namespace NomadBrowser
         private static byte[] _frame = new byte[0];
         private static int _fw, _fh;
         private static bool _frameDirty;
+        private static int _dirtyTop = int.MaxValue, _dirtyBottom;   // the rows that changed since the last send
+        private static bool _sizeChanged = true;                       // the next send is a whole picture
+        private static string _ctxLink = "";                           // the link the player right-clicked last
 
         [STAThread]
         private static int Main(string[] args)
         {
             string Arg(string name, string def = "") { var i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : def; }
+            if (Array.IndexOf(args, "--smoke-test") >= 0) return SmokeTest();
             int.TryParse(Arg("--port"), out var port);
             var token = Arg("--token");
             _data = Arg("--data", Path.Combine(Path.GetTempPath(), "NomadBrowser"));
@@ -66,25 +76,17 @@ namespace NomadBrowser
                 _net.Write(hello, 0, hello.Length);
             }
             catch { return 3; }
+            if (int.TryParse(Arg("--parent"), out var parent) && parent > 0) WatchParent(parent);
 
-            var settings = new CefSettings
-            {
-                RootCachePath = Path.Combine(_data, "cef"),
-                CachePath = Path.Combine(_data, "cef", "profile"),   // keeps the player signed in to Nexus between games
-                PersistSessionCookies = true,
-                LogSeverity = LogSeverity.Disable,
-                Locale = "en-US",   // only en-US.pak ships (the other languages would add 50 MB)
-                WindowlessRenderingEnabled = true,   // CEF's helper processes run CefSharp.BrowserSubprocess.exe, next to this one
-            };
-            settings.SetOffScreenRenderingBestPerformanceArgs();
-            settings.CefCommandLineArgs["autoplay-policy"] = "user-gesture-required";
-            settings.CefCommandLineArgs["mute-audio"] = "1";
+            var settings = NewSettings();
             if (!Cef.Initialize(settings, performDependencyCheck: false, browserProcessHandler: null)) { Event("error Couldn't start the browser."); return 4; }
 
             _browser = new ChromiumWebBrowser(url, new BrowserSettings { WindowlessFrameRate = 30 }) { Size = new System.Drawing.Size(w, h) };
             _browser.DownloadHandler = new Downloads();
             _browser.LifeSpanHandler = new Popups();
             _browser.JsDialogHandler = new Dialogs();
+            _browser.RequestHandler = new OnlyNexus();
+            _browser.MenuHandler = new ContextMenu();
             _browser.Paint += OnPaint;
             _browser.AddressChanged += (s, e) => Event("url " + e.Address);
             _browser.TitleChanged += (s, e) => Event("title " + e.Title);
@@ -103,6 +105,64 @@ namespace NomadBrowser
             try { _browser.Dispose(); } catch { }
             try { Cef.Shutdown(); } catch { }
             return 0;
+        }
+
+        private static CefSettings NewSettings()
+        {
+            var settings = new CefSettings
+            {
+                RootCachePath = Path.Combine(_data, "cef"),
+                CachePath = Path.Combine(_data, "cef", "profile"),   // keeps the player signed in to Nexus between games
+                PersistSessionCookies = true,
+                LogSeverity = LogSeverity.Disable,
+                Locale = "en-US",   // only en-US.pak ships (the other languages would add 50 MB)
+                WindowlessRenderingEnabled = true,   // CEF's helper processes run CefSharp.BrowserSubprocess.exe, next to this one
+            };
+            settings.SetOffScreenRenderingBestPerformanceArgs();   // software drawing, no GPU process work (so no GPU libraries ship)
+            settings.CefCommandLineArgs["autoplay-policy"] = "user-gesture-required";
+            settings.CefCommandLineArgs["mute-audio"] = "1";
+            return settings;
+        }
+
+        /// <summary>If the game goes away without closing the connection (it crashed or was killed), this closes too.</summary>
+        private static void WatchParent(int pid)
+        {
+            System.Diagnostics.Process game;
+            try { game = System.Diagnostics.Process.GetProcessById(pid); } catch { return; }
+            new Thread(() =>
+            {
+                try { game.WaitForExit(); } catch { return; }
+                _quit = true;
+                try { _net?.Close(); } catch { }
+                try { _tcp?.Close(); } catch { }
+            }) { IsBackground = true, Name = "parent" }.Start();
+        }
+
+        /// <summary>
+        /// For the release build: starts Chromium the way the game does, draws a red test page and checks the picture.
+        /// 0 = it painted, 5 = nothing painted in a minute, 4 = Chromium didn't start.
+        /// </summary>
+        private static int SmokeTest()
+        {
+            _data = Path.Combine(Path.GetTempPath(), "NomadBrowser-smoke-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            Directory.CreateDirectory(_data);
+            if (!Cef.Initialize(NewSettings(), performDependencyCheck: false, browserProcessHandler: null)) { Console.Error.WriteLine("Cef.Initialize failed"); return 4; }
+            var painted = new ManualResetEventSlim(false);
+            var page = "data:text/html,<html><body style='margin:0;background:%23ff0000'><h1>NomadBrowser</h1></body></html>";
+            var b = new ChromiumWebBrowser(page, new BrowserSettings { WindowlessFrameRate = 30 }) { Size = new System.Drawing.Size(640, 480) };
+            b.Paint += (s, e) =>
+            {
+                if (e.IsPopup || e.Width < 100 || e.Height < 100) return;
+                var px = new byte[4];
+                Marshal.Copy(e.BufferHandle + ((e.Height - 10) * e.Width + e.Width / 2) * 4, px, 0, 4);   // near the bottom: the red background
+                if (px[2] > 200 && px[1] < 60 && px[0] < 60) painted.Set();
+            };
+            var ok = painted.Wait(TimeSpan.FromSeconds(60));
+            Console.WriteLine(ok ? "painted" : "nothing painted");
+            try { b.Dispose(); } catch { }
+            try { Cef.Shutdown(); } catch { }
+            try { Directory.Delete(_data, true); } catch { }
+            return ok ? 0 : 5;
         }
 
         // ------------------------------------------------------------------ which download button Nexus shows
@@ -170,37 +230,55 @@ namespace NomadBrowser
             Send(2, b, b.Length);
         }
 
+        /// <summary>Keeps the whole picture, and which rows changed (Chromium says what it redrew: often just a line or two).</summary>
         private static void OnPaint(object sender, OnPaintEventArgs e)
         {
             if (e.IsPopup) return;
-            var n = e.Width * e.Height * 4;
+            var row = e.Width * 4;
+            var n = row * e.Height;
             lock (FrameLock)
             {
-                if (_frame.Length != n + 8) _frame = new byte[n + 8];
-                BitConverter.GetBytes(e.Width).CopyTo(_frame, 0);
-                BitConverter.GetBytes(e.Height).CopyTo(_frame, 4);
-                Marshal.Copy(e.BufferHandle, _frame, 8, n);
-                _fw = e.Width; _fh = e.Height;
+                var whole = _frame.Length != n || _fw != e.Width || _fh != e.Height;
+                if (whole) { _frame = new byte[n]; _fw = e.Width; _fh = e.Height; _sizeChanged = true; }
+                var top = whole ? 0 : Math.Max(0, e.DirtyRect.Y);
+                var bottom = whole ? e.Height : Math.Min(e.Height, e.DirtyRect.Y + e.DirtyRect.Height);
+                if (bottom <= top) return;
+                Marshal.Copy(e.BufferHandle + top * row, _frame, top * row, (bottom - top) * row);
+                _dirtyTop = Math.Min(_dirtyTop, top);
+                _dirtyBottom = Math.Max(_dirtyBottom, bottom);
                 _frameDirty = true;
             }
         }
 
+        /// <summary>
+        /// At most 30 times a second: the rows that changed since last time (type 3), or the whole picture after a resize
+        /// (type 1). A still page sends nothing at all.
+        /// </summary>
         private static void SendFrames()
         {
             byte[] copy = new byte[0];
             while (!_quit)
             {
-                var have = false;
+                var have = false; byte type = 3; var count = 0;
                 lock (FrameLock)
                 {
-                    if (_frameDirty)
+                    if (_frameDirty && _fw > 0)
                     {
-                        if (copy.Length != _frame.Length) copy = new byte[_frame.Length];
-                        Buffer.BlockCopy(_frame, 0, copy, 0, _frame.Length);
-                        _frameDirty = false; have = true;
+                        var row = _fw * 4;
+                        int top = _sizeChanged ? 0 : _dirtyTop, rows = (_sizeChanged ? _fh : _dirtyBottom) - top;
+                        type = _sizeChanged ? (byte)1 : (byte)3;
+                        var head = type == 1 ? 8 : 16;
+                        count = head + rows * row;
+                        if (copy.Length < count) copy = new byte[count];
+                        BitConverter.GetBytes(_fw).CopyTo(copy, 0);
+                        BitConverter.GetBytes(_fh).CopyTo(copy, 4);
+                        if (type == 3) { BitConverter.GetBytes(top).CopyTo(copy, 8); BitConverter.GetBytes(rows).CopyTo(copy, 12); }
+                        Buffer.BlockCopy(_frame, top * row, copy, head, rows * row);
+                        _frameDirty = false; _sizeChanged = false; _dirtyTop = int.MaxValue; _dirtyBottom = 0;
+                        have = true;
                     }
                 }
-                if (have) Send(1, copy, copy.Length);
+                if (have) Send(type, copy, count);
                 Thread.Sleep(33);
             }
         }
@@ -255,8 +333,23 @@ namespace NomadBrowser
                 case "fwd": if (_browser.CanGoForward) _browser.Forward(); break;
                 case "reload": _browser.Reload(); break;
                 case "stop": _browser.Stop(); break;
+                // Copy and paste use Windows' clipboard, like any browser.
+                case "copy": Focused()?.Copy(); break;
+                case "cut": Focused()?.Cut(); break;
+                case "paste": Focused()?.Paste(); break;
+                case "selectall": Focused()?.SelectAll(); break;
+                case "undo": Focused()?.Undo(); break;
+                case "redo": Focused()?.Redo(); break;
+                case "copylink":
+                    if (_ctxLink.Length > 0) { try { System.Windows.Forms.Clipboard.SetText(_ctxLink); } catch (Exception ex) { Event("log Couldn't copy the link: " + ex.Message); } }
+                    break;
                 case "quit": _quit = true; break;
             }
+        }
+
+        private static IFrame Focused()
+        {
+            try { var b = _browser.GetBrowser(); return b?.FocusedFrame ?? b?.MainFrame; } catch { return null; }
         }
 
         // ------------------------------------------------------------------ downloads
@@ -365,8 +458,67 @@ namespace NomadBrowser
                 ref bool noJavascriptAccess, out IWebBrowser newBrowser)
             {
                 newBrowser = null;
-                if (!string.IsNullOrEmpty(targetUrl)) chromiumWebBrowser.Load(targetUrl);
+                if (string.IsNullOrEmpty(targetUrl)) return true;
+                if (IsAllowed(targetUrl)) chromiumWebBrowser.Load(targetUrl);
+                else Event("blocked " + targetUrl);
                 return true;
+            }
+        }
+
+        // ------------------------------------------------------------------ where pages may go
+
+        /// <summary>
+        /// The places pages may open: Nexus Mods (and its file servers, for downloads), Nomad Drive Mods, and the sign-in
+        /// pages Nexus and the site use. Only whole pages are checked; what a page loads inside itself isn't.
+        /// </summary>
+        private static readonly string[] Allowed =
+        {
+            "nexusmods.com", "nexus-cdn.com", "nomaddrivemods.online",
+            // signing in with Google, Discord, Steam or Apple (Google passes through YouTube's sign-in page to set its cookies)
+            "accounts.google.com", "accounts.youtube.com", "discord.com", "discordapp.com", "steamcommunity.com", "login.steampowered.com",
+            "appleid.apple.com", "challenges.cloudflare.com",
+        };
+
+        internal static bool IsAllowed(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return true;
+            if (url.StartsWith("about:", StringComparison.OrdinalIgnoreCase) || url.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                || url.StartsWith("blob:", StringComparison.OrdinalIgnoreCase) || url.StartsWith("devtools:", StringComparison.OrdinalIgnoreCase)) return true;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var u) || (u.Scheme != "https" && u.Scheme != "http")) return false;
+            var host = u.Host.ToLowerInvariant().TrimEnd('.');
+            return Allowed.Any(a => host == a || host.EndsWith("." + a, StringComparison.Ordinal));
+        }
+
+        private sealed class OnlyNexus : CefSharp.Handler.RequestHandler
+        {
+            protected override bool OnBeforeBrowse(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IRequest request, bool userGesture, bool isRedirect)
+            {
+                if (!frame.IsMain || IsAllowed(request.Url)) return false;
+                Event("blocked " + request.Url);
+                return true;   // not opened here: the menu offers the player's own web browser
+            }
+
+            protected override bool OnOpenUrlFromTab(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, string targetUrl, WindowOpenDisposition targetDisposition, bool userGesture)
+            {
+                if (IsAllowed(targetUrl)) { chromiumWebBrowser.Load(targetUrl); return true; }
+                Event("blocked " + targetUrl);
+                return true;
+            }
+        }
+
+        // ------------------------------------------------------------------ right-click menu
+
+        /// <summary>Chromium's own right-click menu can't show off-screen: the menu draws its own (Copy, Paste, Open link…).</summary>
+        private sealed class ContextMenu : CefSharp.Handler.ContextMenuHandler
+        {
+            protected override void OnBeforeContextMenu(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IContextMenuParams parameters, IMenuModel model)
+            {
+                model.Clear();
+                var link = parameters.LinkUrl ?? "";
+                if (!link.StartsWith("http", StringComparison.OrdinalIgnoreCase)) link = "";
+                _ctxLink = link;
+                var sel = string.IsNullOrEmpty(parameters.SelectionText) ? 0 : 1;
+                Event($"ctx {parameters.XCoord} {parameters.YCoord} {(parameters.IsEditable ? 1 : 0)} {sel}\t{link}");
             }
         }
 
