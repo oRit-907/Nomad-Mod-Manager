@@ -34,6 +34,7 @@ A [b]Mods[/b] button on the main menu and the pause menu, made for mouse, keyboa
 [*][b]No restart needed[/b]: at the main menu changes happen as you click; mid-drive, press [b]Reload[/b] when you're ready, even online (mods that change multiplayer wait for the main menu). Only the Mods menu itself, preloader patchers and mods that change how the game starts still need a restart.
 [*][b]Problems[/b]: when a mod fails to load, the menu says which one and why in plain words, with a one-click fix where there is one.
 [*][b]Mod settings[/b]: change any mod's settings while you play, with search and reset.
+[*][b]Settings page[/b]: the Mods menu's own settings (open key, language, start-up and more) in the same editor.
 [*][b]Profiles[/b]: save sets of mods and switch between them in one go.
 [*][b]Save backups[/b]: your saves are backed up before every change, with one-click restore.
 [*][b]Export logs for mod devs[/b]: one zip on your Desktop with the BepInEx and Unity logs, every mod with its version and source, and recent errors. Your Windows user name is hidden.
