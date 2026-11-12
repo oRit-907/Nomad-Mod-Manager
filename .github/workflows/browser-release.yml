@@ -1,0 +1,77 @@
+# Builds the Mods menu's in-game browser (NomadBrowser: Chromium through CefSharp, .NET Framework 4.8) on Windows and
+# publishes it as GitHub release browser-vX.Y.Z with NomadBrowser-X.Y.Z.zip. The Mods menu downloads that zip the first
+# time a player installs from Nexus, checks it against GitHub's SHA-256 and unpacks it into BepInEx\NomadModManager\browser.
+# NomadBrowser-app-X.Y.Z.zip (just the browser app, a few KB) is what players who already have the same Chromium get.
+# The release is never marked "latest" (that stays Nomad Mod Downloader's: its updater reads it).
+#
+# Run it by hand: Actions › Browser release › Run workflow (the version is NomadBrowser.csproj's <Version>; the menu asks
+# for the one in InGameBrowser.BrowserVersion). The Visual C++ runtime files CEF needs (msvcp140, vcruntime140,
+# vcruntime140_1) are copied next to it from the runner, as Microsoft allows for app-local use, so players don't need
+# the Visual C++ Redistributable installed.
+name: Browser release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browser-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build NomadBrowser/NomadBrowser.csproj -c Release
+
+      - name: Pack
+        id: pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $v = ([xml](Get-Content NomadBrowser/NomadBrowser.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if (-not $v) { throw "No <Version> in NomadBrowser.csproj" }
+          $out = "NomadBrowser/bin/Release"
+          foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') { Copy-Item "$env:WINDIR\System32\$dll" $out }
+          Get-ChildItem $out -Recurse -Include *.pdb, *.xml | Remove-Item
+          Get-ChildItem "$out/locales" -File | Where-Object Name -ne 'en-US.pak' | Remove-Item
+          $exe = Get-Item "$out/NomadBrowser.exe"
+          Write-Host "NomadBrowser $v, $([math]::Round((Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)) MB unpacked"
+          $zip = "NomadBrowser-$v.zip"
+          Compress-Archive -Path "$out/*" -DestinationPath $zip -CompressionLevel Optimal
+          # The browser app on its own (no Chromium): what the Mods menu fetches when the player already has the same Chromium.
+          $app = "NomadBrowser-app-$v.zip"
+          # It carries the app's own .NET libraries too (SharpCompress and the System.* / Microsoft.Bcl.* it needs), so a fix
+          # to those reaches players without downloading Chromium again.
+          $appFiles = @("$out/NomadBrowser.exe", "$out/NomadBrowser.exe.config", "$out/NOTICE.txt") + (Get-ChildItem $out -File -Include SharpCompress.dll, System.*.dll, Microsoft.Bcl.*.dll -Recurse | Where-Object { $_.DirectoryName -eq (Resolve-Path $out).Path } | ForEach-Object FullName)
+          Compress-Archive -Path $appFiles -DestinationPath $app -CompressionLevel Optimal
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          $appHash = (Get-FileHash $app -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip", "$appHash  $app" | Out-File SHA256SUMS -Encoding ascii
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+          "app=$app" >> $env:GITHUB_OUTPUT
+          "sha=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $v = '${{ steps.pack.outputs.version }}'
+          $tag = "browser-v$v"
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists. Raise <Version> in NomadBrowser.csproj first." }
+          $notes = "The Mods menu's in-game browser for Nexus Mods (Chromium through CefSharp). The Mods menu downloads this by itself the first time it's needed; you don't need to install it by hand.`n`nNomadBrowser-$v.zip sha256: ${{ steps.pack.outputs.sha }}"
+          gh release create $tag '${{ steps.pack.outputs.zip }}' '${{ steps.pack.outputs.app }}' SHA256SUMS --title "In-game browser $v" --notes $notes --target ${{ github.sha }} --latest=false

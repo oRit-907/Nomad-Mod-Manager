@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>NomadModManager</AssemblyName>
+    <RootNamespace>NomadModManager</RootNamespace>
+  </PropertyGroup>
+  <!-- dotnet build -p:NexusEdition=true: the build for Nexus Mods (see Edition.cs). -->
+  <PropertyGroup Condition="'$(NexusEdition)' == 'true'">
+    <DefineConstants>$(DefineConstants);NEXUS_EDITION</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx" HintPath="$(Lib)BepInEx.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(Lib)0Harmony.dll" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(Lib)Mono.Cecil.dll" Private="false" />
+    <Reference Include="Newtonsoft.Json" HintPath="$(Lib)Newtonsoft.Json.dll" Private="false" />
+    <!-- .7z / .rar unpacking: SharpCompress 0.24.0 (MIT), renamed and patched by tools/scpatch, shipped next to the menu. -->
+    <Reference Include="NomadModManager.SharpCompress" HintPath="$(Lib)NomadModManager.SharpCompress.dll" Private="false" />
+    <Reference Include="EvilCore.UI" HintPath="$(Lib)EvilCore.UI.dll" Private="false" />
+    <Reference Include="EvilCore" HintPath="$(Lib)EvilCore.dll" Private="false" />
+    <Reference Include="EvilCore.Networking" HintPath="$(Lib)EvilCore.Networking.dll" Private="false" />
+    <Reference Include="com.Epic.OnlineServices" HintPath="$(Lib)com.Epic.OnlineServices.dll" Private="false" />
+    <Reference Include="Unity.Localization" HintPath="$(Lib)Unity.Localization.dll" Private="false" />
+    <Reference Include="Unity.TextMeshPro" HintPath="$(Lib)Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(Lib)UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(Lib)UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(Lib)UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(Lib)UnityEngine.UI.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(Lib)UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(Lib)UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UnityWebRequestModule" HintPath="$(Lib)UnityEngine.UnityWebRequestModule.dll" Private="false" />
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(Lib)UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(Lib)Unity.InputSystem.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(Lib)UnityEngine.InputLegacyModule.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The menu's words in other languages: the downloader's translations plus the menu's own. -->
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)../Lang/app/*.json" LogicalName="Lang.app.%(Filename).json" />
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)../Lang/*.json" LogicalName="Lang.menu.%(Filename).json" />
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)../Plugin/community-icon.png" LogicalName="community-icon.png" />
+  </ItemGroup>
+</Project>

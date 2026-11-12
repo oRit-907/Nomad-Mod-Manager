@@ -1,0 +1,80 @@
+# Makes the GitHub release for each in-game Mods menu (Nomad Mod Manager) version.
+#
+# nomaddrivemods.online checks these releases every few minutes and publishes a new version on the Mods menu's
+# mod page by itself (inc/github.php on the site), so the site never needs the zips uploaded by hand.
+# They're never marked "latest": the latest release stays Nomad Mod Downloader's (its updater reads it).
+#
+# To make a release, push a branch named menu-release/vX.Y.Z (started from main) with the files in release-files/:
+#   - NomadModManager-X.Y.Z-BepInEx5.zip (the Mods menu is made for BepInEx 5 only).
+#   - SHA256SUMS: sha256sum output for them (pushed last; until it's there the run does nothing)
+#   - README.txt (optional): the Mods menu's description in the site's BBCode (from README.txt);
+#     the site puts it on the mod page when it publishes the version
+#   - notes.md (optional): what's new, shown on the release and as the version's changelog on the site.
+# The workflow checks the hashes, creates release mods-menu-vX.Y.Z on the main commit the branch started from,
+# attaches the zips, then deletes the branch.
+name: Mods menu release
+
+on:
+  push:
+    branches: ['menu-release/*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: menu-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Make the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          V="${BRANCH#menu-release/}"
+          VER="${V#v}"
+          if [ "$V" != "v$VER" ]; then echo "Branch must be menu-release/vX.Y.Z"; exit 1; fi
+          TAG="mods-menu-v$VER"
+          F=release-files
+          if [ ! -f "$F/SHA256SUMS" ]; then
+            echo "No $F/SHA256SUMS yet, so there's nothing to do."
+            exit 0
+          fi
+          mkdir -p out
+          f="NomadModManager-$VER-BepInEx5.zip"
+          [ -f "$F/$f" ] || { echo "$f is missing"; exit 1; }
+          cp "$F/$f" out/
+          if [ -f "$F/README.txt" ]; then cp "$F/README.txt" out/; fi
+          (cd out && sha256sum -c "../$F/SHA256SUMS")
+
+          {
+            echo "**The in-game Mods menu for Nomad Drive, v$VER.** Players get it from Nomad Mod Downloader, the Mods menu's own update button, or nomaddrivemods.online."
+            echo
+            if [ -f "$F/notes.md" ]; then cat "$F/notes.md"; echo; fi
+            echo "## Downloads"
+            echo "- **NomadModManager-$VER-BepInEx5.zip**: for BepInEx 5."
+            echo "Unzip into the Nomad Drive folder (where Nomad Drive.exe is)."
+            if [ -f out/README.txt ]; then echo "- **README.txt**: the Mods menu's description (nomaddrivemods.online shows it on the mod page)."; fi
+            echo
+            echo "## Checksums"
+            for f in out/*; do echo "- $(basename "$f") sha256: $(sha256sum "$f" | cut -d' ' -f1)"; done
+          } > release-notes.md
+          cat release-notes.md
+
+          TITLE="In-game Mods menu $VER"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md --latest=false
+          else
+            BASE="$(git merge-base HEAD origin/main)"
+            gh release create "$TAG" out/* --title "$TITLE" --notes-file release-notes.md --target "$BASE" --latest=false
+          fi
+          git push origin --delete "$BRANCH"

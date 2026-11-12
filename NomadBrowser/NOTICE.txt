@@ -1,0 +1,7 @@
+NomadBrowser: the Nomad Mod Manager's in-game browser for Nexus Mods (https://github.com/oRit-907/NomadModDownloader).
+
+It includes CefSharp (BSD 3-Clause, The CefSharp Authors), the Chromium Embedded Framework and Chromium (BSD 3-Clause,
+Marshall A. Greenblatt and The Chromium Authors, with the licenses of Chromium's third-party parts), SharpCompress (MIT,
+Adam Hathcock), .NET support libraries (MIT, .NET Foundation and Contributors), and the Microsoft Visual C++ runtime and
+DirectX shader compiler libraries (Microsoft Corporation, redistributable). Full notices:
+https://github.com/oRit-907/NomadModDownloader/blob/main/THIRD-PARTY-NOTICES.md

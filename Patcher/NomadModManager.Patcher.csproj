@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>NomadModManager.ModFiles</AssemblyName>
+    <RootNamespace>NomadModManager</RootNamespace>
+  </PropertyGroup>
+  <!-- Named for what they patch: your mod files (queued updates, removals and on/off switches, applied at game start).
+       ModChanges=true builds the same patcher as "NomadModFiles" (its own name, in its own folder), shipped with the
+       BepInEx for Nomad Drive packages and installed by Nomad Mod Downloader, so updates waiting for a restart are
+       applied even without the Mods menu, or with a Mods menu built for the other BepInEx. -->
+  <PropertyGroup Condition="'$(ModChanges)' == 'true'">
+    <AssemblyName>NomadModFiles</AssemblyName>
+    <DefineConstants>$(DefineConstants);MODCHANGES</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/*.cs" />
+    <Reference Include="BepInEx" HintPath="$(Lib)BepInEx.dll" Private="false" />
+    <Reference Include="Mono.Cecil" HintPath="$(Lib)Mono.Cecil.dll" Private="false" />
+  </ItemGroup>
+</Project>
