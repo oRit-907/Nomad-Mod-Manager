@@ -599,12 +599,11 @@ namespace NomadModManager
             if (Hit(br)) { Close(); return; }
 
             // Status card at the bottom, like the downloader's
-            var cardH = (restart + reload > 0 ? 210 : 150) * _s;
+            var cardH = (restart + reload > 0 ? 184 : 124) * _s;
             var card = new Rect(r.x + 10 * _s, Screen.height - 44 * _s - cardH, r.width - 20 * _s, cardH);
             Glass(card, 16);
 
             var ky = card.y + 18 * _s;
-            Row(card, ref ky, "Game", "Nomad Drive");
             if (Edition.Nexus) Row(card, ref ky, "BepInEx", BepInExVersion(), CGood);
             else Row(card, ref ky, "BepInEx app", DownloaderStatus(out var dlColor), dlColor);
             Row(card, ref ky, "Changes", reload > 0 ? $"{reload} waiting — press Reload" : restart > 0 ? $"{restart} need a restart"
