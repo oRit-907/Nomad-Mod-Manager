@@ -10,3 +10,8 @@ The build references these, which can't be shared here (they belong to the game,
 - From BepInEx 5.4.23.x (`BepInEx\core`): `BepInEx.dll`, `BepInEx.Preloader.dll`, `BepInEx.Harmony.dll`, `0Harmony.dll`,
   `0Harmony20.dll`, `HarmonyXInterop.dll`, `Mono.Cecil*.dll`, `MonoMod.*.dll`.
 - `NomadModManager.SharpCompress.dll` and its licence: made by `tools/scpatch` (see its README).
+- `lib/bep6/`: BepInEx 6.0.0-be.697's runtime for BepInEx 6 Compatibility (Nexus edition zip): `BepInEx.Core.dll`,
+  `BepInEx.Unity.Mono.dll`, `BepInEx.Unity.Common.dll`, `BepInEx.Preloader.Core.dll`, `SemanticVersioning.dll`,
+  `AssetRipper.Primitives.dll`, from the official `BepInEx-Unity.Mono-win-x64-6.0.0-be.697` build's `BepInEx/core`.
+- `lib/native/`: `libwebp.dll` and `libsharpyuv.dll` from the `Imazen.WebP.NativeRuntime.win-x64` 1.6.1 NuGet package
+  (`runtimes/win-x64/native`).

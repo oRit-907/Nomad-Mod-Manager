@@ -1,0 +1,89 @@
+[center][size=6][b][color=#fac16e]Nomad Mod Manager[/color][/b][/size]
+[size=4]The Mods menu, inside Nomad Drive[/size]
+
+Install, update, switch on and off and set up your mods without leaving the game, and without restarting it.
+A [b]Mods[/b] button on the main menu and the pause (Esc) menu, made for mouse, keyboard [i]and[/i] controller.
+
+You can also find it on [url=https://www.nomaddrivemods.online/mod/1]nomaddrivemods.online/mod/1[/url] (Nomad Drive Mods)[/center]
+
+[line]
+
+[size=5][b][color=#fac16e]🧭 Find and install Nexus mods[/color][/b][/size]
+[list]
+[*][b]Browse Nomad Drive's Nexus Mods section[/b] right in the game, as picture cards sorted into categories, with search.[/*]
+[*][b]Install[/b] opens the mod's file page on Nexus Mods in your own web browser. Download it there as usual (free accounts: Slow download), and the Mods menu installs it (.zip, .7z or .rar) as soon as the file lands in your Downloads folder. It finds where Opera, Chrome, Edge, Brave, Vivaldi or Firefox save downloads by itself. Picking several mods opens them one after another.[/*]
+[*]The menu never downloads anything by itself: every file comes from Nexus, downloaded by you. Your downloaded file stays where it is.[/*]
+[*][b]Mod pages[/b] with the full description, every file and its changelog, what it needs, and an [b]Images[/b] tab with every picture full size.[/*]
+[*][b]Updates[/b]: the menu checks Nexus for newer versions of your mods and shows how many are waiting on the Mods buttons. Updating works like installing: you download the new file, the menu swaps it in and removes the old copy.[/*]
+[/list]
+
+[size=5][b][color=#fac16e]🔧 Keep them working[/color][/b][/size]
+[list]
+[*][b]Installed[/b]: every mod grouped by author, with search. Switch mods on and off, remove them, or update them in one go.[/*]
+[*][b]No restart needed[/b]: switching mods on or off, removing, updating and new installs happen in the running game. Mid-drive, press [b]Reload[/b] when you're ready.[/*]
+[*][b]Problems[/b]: when a mod doesn't start, it says why in plain words (a missing requirement, a clash, a second copy, an error), with a one-click fix where there is one.[/*]
+[*][b]Mod settings in the game[/b]: switches, choices, numbers, text and key rebinding, with search and Reset all.[/*]
+[*][b]Profiles[/b]: save sets of mods and switch between them in one go.[/*]
+[*][b]Save backups[/b] before every mod change, with one-click restore.[/*]
+[*][b]Export logs for mod devs[/b]: one zip on your Desktop with everything a mod author needs, your Windows user name hidden.[/*]
+[*][b]Report a bug[/b] on any Nexus mod, straight to its Bugs tab.[/*]
+[*][b]BepInEx is protected[/b]: its own parts can't be switched off or removed from the menu, so one click can't break every mod.[/*]
+[/list]
+
+[size=5][b][color=#fac16e]🚐 Multiplayer that doesn't drop you[/color][/b][/size]
+[list]
+[*][b]Safe join[/b]: join games whose host has no mods (or not yours) and stay in. Your mods' multiplayer parts pause while you're in their game and come back when you leave.[/*]
+[*][b]Mods badge in the lobby list[/b]: [i]Mods OK[/i], [i]Mods OK · 2 optional[/i] or [i]Needs 2 mods[/i] next to each game, before you join, plus filters like [i]Only games I can join[/i].[/*]
+[*][b]Check before joining[/b]: see what's different and [b]Match host[/b] on the host's exact versions. [b]Back to my mods[/b] puts your own setup back afterwards.[/*]
+[*][b]When you host[/b]: mark each multiplayer mod Required or Optional, and pick which mods' settings guests use while they're in your game.[/*]
+[*][b]Share your mods[/b]: copy your mod list as a code for your friends; they paste it in their Mods menu to compare and get the same mods.[/*]
+[*][b]Why I was dropped[/b]: when a game drops you, the menu says why in plain words and which mods are likely involved.[/*]
+[/list]
+
+[size=5][b][color=#fac16e]🌍 Everywhere[/color][/b][/size]
+[list]
+[*][b]In your language[/b]: follows the game's language (English, German, Spanish, French, Italian, Japanese, Korean, Polish, Portuguese, Russian, Turkish and Chinese).[/*]
+[*][b]Controller support[/b]: d-pad or stick to move, A to press, B to go back, LB/RB to switch pages, right stick to scroll.[/*]
+[*][b]Clean exit[/b]: makes sure the game closes when you quit, even if another mod keeps it running.[/*]
+[/list]
+
+[line]
+
+[size=5][b][color=#fac16e]🌐 What it connects to[/color][/b][/size]
+[list]
+[*]Only [b]Nexus Mods[/b], to list Nomad Drive's mods, show their pages and pictures, and check your installed mods for updates. Nothing about you is sent.[/*]
+[*]It doesn't update itself and doesn't download files or programs: you download everything from Nexus in your own browser.[/*]
+[/list]
+
+[size=5][b][color=#fac16e]📦 Requirements[/color][/b][/size]
+[list]
+[*][b]BepInEx 5[/b]: [url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url].[/*]
+[*][b]BepInEx 6 Compatibility is included[/b], so mods built for BepInEx 6 load on BepInEx 5 too (it runs BepInEx 6's own loader beside BepInEx 5; BepInEx 6 patchers don't run).[/*]
+[*]Windows, and a web browser to download from Nexus.[/*]
+[/list]
+
+[size=5][b][color=#fac16e]⬇ Install[/color][/b][/size]
+[list=1]
+[*]Install [url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url] if you haven't yet, and start the game once.[/*]
+[*]Unzip this mod into your Nomad Drive folder (the one with Nomad Drive.exe; in Steam: right-click Nomad Drive › Manage › Browse local files) and let it merge.[/*]
+[*]Start the game and press [b]Mods[/b] on the main menu or in the pause menu.[/*]
+[/list]
+[spoiler=Your browser saves downloads somewhere else?]
+The menu watches the Downloads folder in your Windows user folder. If your browser saves somewhere else, put that folder in [b]DownloadsFolder[/b] in [b]BepInEx\config\akorit.nomadmodmanager.cfg[/b].
+.zip, .7z, .rar and .dll files all install by themselves. Archives with a password can't be unpacked.
+[/spoiler]
+
+[spoiler=For mod authors]
+Your mod can switch on, off and update instantly anywhere, even mid-drive, if it sets itself up when it starts and cleans up in [b]OnDestroy[/b] (unpatch Harmony, destroy what it made). Say so with one line:
+[code][assembly: System.Reflection.AssemblyMetadata("NomadHotLoad", "true")][/code]
+Mods without it are reloaded at the main menu, or when the player presses Reload.
+
+A mod whose multiplayer features are optional (players without it can still join) can say so too:
+[code][assembly: System.Reflection.AssemblyMetadata("NomadNetOptional", "true")][/code]
+[/spoiler]
+
+[line]
+
+[center][size=2]Source code: [url=https://github.com/oRit-907/Nomad-Mod-Manager]github.com/oRit-907/Nomad-Mod-Manager[/url] (this is the Nexus edition, built with [i]-p:NexusEdition=true[/i])
+Unpacks .7z and .rar with SharpCompress by Adam Hathcock (MIT). BepInEx 6 Compatibility includes BepInEx 6.0.0-be.697's runtime (LGPL-2.1, unchanged) with SemanticVersioning and AssetRipper.Primitives (MIT).
+A fan-made tool, not made by or affiliated with Indie Devil (the makers of Nomad Drive) or Nexus Mods.[/size][/center]

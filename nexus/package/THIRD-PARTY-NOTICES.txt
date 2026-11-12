@@ -1,0 +1,12 @@
+Third-party files in Nomad Mod Manager (Nexus edition)
+======================================================
+NomadModManager.SharpCompress.dll - SharpCompress 0.24.0 by Adam Hathcock, MIT licence (see
+NomadModManager.SharpCompress-LICENSE.txt). Renamed, and two calls changed so it runs in Nomad Drive;
+how: https://github.com/oRit-907/Nomad-Mod-Manager/tree/main/tools/scpatch
+
+BepInEx\NomadModManager\native\libwebp.dll, libsharpyuv.dll - libwebp by Google, BSD licence (libwebp-licence.txt).
+
+BepInEx\compat\BepInEx6\BepInEx.Core.dll, BepInEx.Unity.Mono.dll, BepInEx.Unity.Common.dll, BepInEx.Preloader.Core.dll -
+BepInEx 6.0.0-be.697 (https://github.com/BepInEx/BepInEx), LGPL-2.1, official release build, unchanged.
+SemanticVersioning.dll and AssetRipper.Primitives.dll - MIT licence, unchanged.
+They are used by BepInEx 6 Compatibility (BepInEx\plugins\BepInEx6Compat, by AkoRit) to run BepInEx 6 mods on BepInEx 5.

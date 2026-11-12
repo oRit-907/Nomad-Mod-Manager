@@ -19,8 +19,8 @@ releases are there.)
 | Internet | the website, GitHub, Nexus | Nexus Mods only |
 
 Everything that differs is behind `Edition.Nexus` / `#if NEXUS_EDITION` (see `Plugin/Edition.cs`).
-The Nexus zip also carries BepInEx 6 Compatibility (`BepInEx/plugins/BepInEx6Compat`, source in
-[NomadModDownloader/mod/BepInEx6Compat](https://github.com/oRit-907/NomadModDownloader/tree/main/mod/BepInEx6Compat))
+The Nexus zip (built by `bash nexus/build.sh`, see [`nexus/README.md`](nexus/README.md)) also carries BepInEx 6
+Compatibility (`BepInEx/plugins/BepInEx6Compat`, source in [`BepInEx6Compat/`](BepInEx6Compat))
 with BepInEx 6.0.0-be.697's runtime (LGPL-2.1, unchanged) in `BepInEx/compat/BepInEx6`, and
 `NomadModManager.SharpCompress.dll` (SharpCompress 0.24.0, MIT, made by `tools/scpatch`).
 

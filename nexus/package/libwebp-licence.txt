@@ -1,0 +1,2 @@
+libwebp 1.6.1 and libsharpyuv (Google, BSD 3-Clause licence: https://chromium.googlesource.com/webm/libwebp/+/refs/heads/main/COPYING)
+Used by Nomad Mod Manager to show Nexus thumbnails, which are WebP pictures.

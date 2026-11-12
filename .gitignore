@@ -5,3 +5,4 @@ out/
 .vs/
 lib/*
 !lib/README.md
+nexus/out/
