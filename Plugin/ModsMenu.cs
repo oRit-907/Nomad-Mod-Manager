@@ -580,6 +580,10 @@ namespace NomadModManager
                 (TabActivity, "Activity"),
                 (TabSettings, "Settings")
             };
+            // The pages and Back always fit above the status box: closer together on short screens.
+            var shown = items.Count(i => Array.IndexOf(TabOrder, i.Item1) >= 0);
+            var cardTop = Screen.height - 44 * _s - (restart + reload > 0 ? 184 : 124) * _s;
+            var step = Mathf.Clamp((cardTop - 16 * _s - y - 50 * _s) / (shown + 0.1f), 36 * _s, 54 * _s);
             foreach (var (tab, label) in items)
             {
                 if (Array.IndexOf(TabOrder, tab) < 0) continue;   // not in this edition
@@ -588,13 +592,13 @@ namespace NomadModManager
                 var hover = ir.Contains(Event.current.mousePosition);
                 Lbl(ir, label, Tint(_nav, _tab == tab || hover ? CAccent : CText));
                 if (Hit(ir)) ShowTab(tab);
-                y += 54 * _s;
+                y += step;
             }
             if (_padMode)
                 Lbl(new Rect(r.x, y - 6 * _s, r.width, 22 * _s), "LB / RB switch pages   ·   B back", Center(_small, CMuted));
             var back = OpenedFromMainMenu || OpenedFromPause ? "Back" : "Close";
             var bs = _nav.CalcSize(Lang.C(back));
-            var br = new Rect(r.center.x - bs.x / 2, y + 10 * _s, bs.x, 50 * _s);
+            var br = new Rect(r.center.x - bs.x / 2, y + 2 * _s, bs.x, 50 * _s);
             Lbl(br, back, Tint(_nav, br.Contains(Event.current.mousePosition) ? CAccent : CMuted));
             if (Hit(br)) { Close(); return; }
 
