@@ -79,7 +79,8 @@ jobs:
 
       - name: Sizes
         shell: pwsh
-        run: Get-ChildItem NomadBrowser-*.zip | ForEach-Object { Write-Host "$($_.Name): $([math]::Round($_.Length / 1MB, 1)) MB" }
+        run: |
+          Get-ChildItem NomadBrowser-*.zip | ForEach-Object { Write-Host "$($_.Name): $([math]::Round($_.Length / 1MB, 1)) MB" }
 
       - name: Release
         if: ${{ !inputs.dry_run }}
