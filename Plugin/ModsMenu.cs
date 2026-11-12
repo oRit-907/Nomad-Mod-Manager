@@ -935,11 +935,42 @@ namespace NomadModManager
             }
             if (bx < rx + 140 * _s) bx = rx + 140 * _s;
             if (B("Page", false, 92)) Application.OpenURL(m.PageUrl);
-            if (B("Endorse", false, 120))
+            if (NexusAccount.SignedIn)
             {
-                // 1.10.1: Endorse opens the mod's Nexus page (the old downloader app that did this is now Check BepInEx).
+                // Signed in with Nexus: endorse and track right here, on the player's press.
+                if (!_nexusListsAsked) { _nexusListsAsked = true; _host.StartCoroutine(NexusAccount.LoadLists()); }
+                var endorsed = NexusAccount.Endorsed.Contains(m.Id);
+                if (B(_nexusBusy == m.Id * 2 ? "Endorsing…" : endorsed ? "Endorsed" : "Endorse", endorsed, 130) && _nexusBusy == 0)
+                {
+                    _nexusBusy = m.Id * 2;
+                    var mod = m;
+                    var entryVersion = entry?.Version ?? m.Version;
+                    _host.StartCoroutine(NexusAccount.Endorse(m.Id, entryVersion, !endorsed, (ok, err) =>
+                    {
+                        _nexusBusy = 0;
+                        if (!ok) { Toast("Couldn't endorse " + mod.Name + ": " + err, false); return; }
+                        if (!endorsed) mod.Endorsements++; else if (mod.Endorsements > 0) mod.Endorsements--;
+                        Toast(!endorsed ? $"Endorsed {mod.Name} on Nexus. Thanks, it helps the author!" : $"Took back your endorsement of {mod.Name}.", true);
+                    }));
+                }
+                var tracked = NexusAccount.Tracked.Contains(m.Id);
+                if (B(_nexusBusy == m.Id * 2 + 1 ? "Tracking…" : tracked ? "Tracking" : "Track", tracked, 120) && _nexusBusy == 0)
+                {
+                    _nexusBusy = m.Id * 2 + 1;
+                    var mod = m;
+                    _host.StartCoroutine(NexusAccount.Track(m.Id, !tracked, (ok, err) =>
+                    {
+                        _nexusBusy = 0;
+                        if (!ok) { Toast("Couldn't change tracking of " + mod.Name + ": " + err, false); return; }
+                        Toast(!tracked ? $"Tracking {mod.Name} on Nexus: its updates show in your Nexus notifications." : $"Stopped tracking {mod.Name}.", true);
+                    }));
+                }
+            }
+            else if (B("Endorse", false, 120))
+            {
+                // Not signed in: the mod's Nexus page, to endorse it there.
                 Application.OpenURL(m.PageUrl);
-                Toast("Opened the page: press Endorse there (Nexus needs you to be logged in).", true);
+                Toast("Opened the page: press Endorse there. Or sign in with Nexus in Settings to endorse right here.", true);
             }
             if (B("Report a bug", false, 160))
             {
@@ -1238,6 +1269,45 @@ namespace NomadModManager
         }
 
         /// <summary>The Settings page: the Mods menu's own settings, in the same editor as any mod's.</summary>
+        private bool _nexusListsAsked;
+        private int _nexusBusy;   // mod id * 2 (endorsing) or * 2 + 1 (tracking)
+
+        /// <summary>The Settings page's Nexus account box: sign in or out, and who's signed in.</summary>
+        private void DrawNexusAccount(Rect box)
+        {
+            Fill(box, CCard, 12 * _s);
+            var tx = box.x + 18 * _s;
+            var bw = 230 * _s;
+            var right = box.xMax - 14 * _s;
+            Lbl(new Rect(tx, box.y + 10 * _s, box.width - 520 * _s, 26 * _s), "Nexus Mods account", _bold);
+            string line;
+            if (NexusAccount.SignedIn)
+                line = "Signed in as " + NexusAccount.UserName + (NexusAccount.Premium ? " (Premium)" : "") + (NexusAccount.UsingTestKey ? ", with your personal API key (for testing)" : "") + ". Endorse and Track work on mod pages.";
+            else if (NexusAccount.SigningIn) line = NexusAccount.Status;
+            else if (NexusAccount.CanSignIn) line = "Sign in to endorse and track mods from the game. You sign in on Nexus's own page; the Mods menu never sees your password.";
+            else line = "Sign in with Nexus is waiting for Nexus Mods to approve the Mods menu. For testing, copy your personal API key from Nexus (Site preferences › API keys).";
+            if (!NexusAccount.SignedIn && !NexusAccount.SigningIn && NexusAccount.Status.Length > 0) line = NexusAccount.Status;
+            Lbl(new Rect(tx, box.y + 38 * _s, box.width - bw * 2 - 60 * _s, box.height - 44 * _s), line, Tint(_wrapSmall, CMuted));
+            var b1 = new Rect(right - bw, box.y + (box.height - 42 * _s) / 2, bw, 42 * _s);
+            if (NexusAccount.SignedIn)
+            {
+                if (Btn(b1, "Sign out", false)) { NexusAccount.SignOut(); Toast("Signed out of Nexus Mods. (To take the Mods menu's access back completely, do it on Nexus too.)", true); }
+                return;
+            }
+            if (NexusAccount.SigningIn) { StatusText(b1, "Waiting…", CAccent); return; }
+            if (NexusAccount.CanSignIn)
+            {
+                if (Btn(b1, "Sign in with Nexus", true))
+                    _host.StartCoroutine(NexusAccount.SignIn((ok, msg) => { Toast(msg, ok); _nexusListsAsked = false; }));
+            }
+            else if (Btn(b1, "Use key from clipboard", false))
+            {
+                string key = "";
+                try { key = GUIUtility.systemCopyBuffer ?? ""; } catch { }
+                _host.StartCoroutine(NexusAccount.UseTestKey(key, (ok, msg) => { Toast(msg, ok); _nexusListsAsked = false; }));
+            }
+        }
+
         private void OpenOwnSettings()
         {
             var me = _cat.Mods.FirstOrDefault(x => x.IsSelf);
@@ -1276,8 +1346,12 @@ namespace NomadModManager
                 }
             }
 
+            // The Mods menu's own settings start with the Nexus account.
+            var shift = 0f;
+            if (own) { DrawNexusAccount(new Rect(r.x, r.y + 120 * _s, r.width, 92 * _s)); shift = 104 * _s; }
+
             // Find a setting: just start typing (name, description or section).
-            var fr = new Rect(r.x, r.y + 120 * _s, r.width, 42 * _s);
+            var fr = new Rect(r.x, r.y + 120 * _s + shift, r.width, 42 * _s);
             Fill(fr, CField, 11 * _s);
             var fcaret = (Time.unscaledTime % 1f) < 0.5f ? "|" : " ";
             Lbl(new Rect(fr.x + 16 * _s, fr.y, fr.width - 56 * _s, fr.height),
@@ -1292,7 +1366,7 @@ namespace NomadModManager
             var items = _settings.SelectMany(ms => ms.Items.Select(it => (Owner: ms, It: it)))
                 .Where(x => _settingsFilter.Length == 0 || (x.It.Key + " " + x.It.Description + " " + x.It.Section + " " + Pretty(x.It.Key)).IndexOf(_settingsFilter, StringComparison.OrdinalIgnoreCase) >= 0)
                 .ToList();
-            var view = new Rect(r.x, r.y + 174 * _s, r.width, r.height - 174 * _s);
+            var view = new Rect(r.x, r.y + 174 * _s + shift, r.width, r.height - 174 * _s - shift);
             if (items.Count == 0 && _settingsFilter.Length > 0)
             {
                 Lbl(new Rect(view.x, view.y, view.width, 40 * _s), "No setting matches \"" + _settingsFilter + "\".", Tint(_body, CMuted));

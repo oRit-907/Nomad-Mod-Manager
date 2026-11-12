@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.12.3";
+        public const string Version = "1.13.0";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -82,6 +82,9 @@ namespace NomadModManager
             EndOnQuit = Config.Bind("General", "EndGameAfterQuit", true,
                 "Make sure the game really ends after you quit. Some mods leave work running that keeps the game open in the background (Steam still shows it as running).");
             Application.quitting += OnQuitting;
+            NexusClientId = Config.Bind("Nexus", "SignInClientId", "",
+                "Leave empty. (For testing Sign in with Nexus before it's built in: the OAuth client id Nexus Mods gave the Mods menu.)");
+            NexusAccount.Load();
 #if NEXUS_EDITION
             // The Nexus edition: Nexus Mods only. Files are downloaded by the player in their own web browser.
             DownloadsFolder = Config.Bind("Nexus", "DownloadsFolder", "",
@@ -102,6 +105,7 @@ namespace NomadModManager
         }
 
         internal ConfigEntry<bool> EndOnQuit;
+        internal static ConfigEntry<string> NexusClientId;
         internal ConfigEntry<string> DownloadsFolder;
         internal ConfigEntry<bool> BrowserAutoGet;
 
