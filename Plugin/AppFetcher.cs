@@ -18,7 +18,7 @@ namespace NomadModManager
     /// </summary>
     internal static class AppFetcher
     {
-        public const string Repo = "oRit-907/NomadModDownloader";   // still the in-game browser's download (InGameBrowser)
+        public const string Repo = "oRit-907/Nomad-Mod-Manager";   // the in-game browser's download (InGameBrowser): browser-vX.Y.Z releases
         public const string Site = "https://www.nomaddrivemods.online";
         public const string ReleasesPage = Site + "/bepinex";
         private const string Api = Site + "/app";
