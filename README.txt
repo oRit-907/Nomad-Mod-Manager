@@ -21,7 +21,7 @@ A [b]Mods[/b] button on the main menu and the pause menu, made for mouse, keyboa
 [list]
 [*][b]Browse mods[/b] from this site and press [b]Subscribe[/b] on a mod's page: it installs straight away and keeps itself updated, and unsubscribing removes it. Every file is virus-scanned on the site and checked again after download.
 [*][b]Requirements come with it[/b]: the mods a mod needs are installed with it and kept updated too, and come off again once nothing you're subscribed to needs them.
-[*][b]Nexus mods, installed in the game[/b]: browse Nomad Drive's Nexus Mods section as picture cards. [b]Install[/b] opens the mod's Nexus page in the menu's own browser: sign in to Nexus once, press its download button, and the menu installs it (.zip, .7z or .rar). The browser gets itself ready in the background the first time (about 170 MB), then only small updates.
+[*][b]Nexus mods, installed in the game[/b]: browse Nomad Drive's Nexus Mods section as picture cards. [b]Install[/b] opens the mod's Nexus page in the menu's own browser: sign in to Nexus once, press its download button, and the menu installs it (.zip, .7z or .rar). The browser gets itself ready in the background the first time (about 150 MB), then only small updates. It stays on Nexus Mods and this site, has copy and paste with a right-click menu, and works with a controller.
 [*][b]Mod packs[/b]: subscribe to a whole pack in one click, including its Nexus mods and mods added to it later. [b]Make your own packs[/b] right from the game.
 [*][b]Full mod pages[/b] with the description, versions, requirements and an [b]Images[/b] tab with every picture full size.
 [*][b]Only mods you can actually get[/b]: mods with no file to download, and mods that are only an .exe, are left out. [b]Refresh[/b] loads the newest mods straight away.
@@ -93,6 +93,14 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.12.0[/b][/size]
+[list]
+[*]The in-game browser is smoother and lighter: it only redraws the part of the page that changed, and its download is about 25 MB smaller
+[*]Copy and paste in the browser: Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+Z, and a right-click menu with Copy, Paste and Open link in my web browser. Held keys like Backspace repeat
+[*]The browser stays on Nexus Mods and this site (and the sign-in pages they use). Other links offer to open in your own web browser
+[*]Controller support in the browser: left stick moves a cursor, A clicks, right stick scrolls, B goes back, LB/RB back and forward, Y for copy and paste, Start is Enter, X opens Steam's on-screen keyboard (Big Picture and Steam Deck)
+[*]If the browser stops by itself, it starts again on the same page, and it always closes with the game
+[/list]
 [size=3][b]1.10.0 – 1.10.1[/b][/size]
 [list]
 [*]Check BepInEx installs from this site instead of GitHub
