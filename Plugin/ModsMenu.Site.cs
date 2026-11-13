@@ -177,13 +177,11 @@ namespace NomadModManager
         private static string InstallLabel(SiteMod m) => ModEntry.IsLoaderName(m.Name) ? "Check BepInEx" : "Install";
 
         /// <summary>
-        /// Where a website mod stands (Installed, Installing, Update ready…). Browse mods has no Install buttons: mods
-        /// from the site are installed by subscribing (the Subscribe button on the mod's page), which also keeps them updated.
+        /// Where a website mod stands (Installed, Installing, Update ready…), next to its Install / Update / Details buttons.
         /// </summary>
         private void SiteStatus(Rect r, SiteMod m, string loaderLabel = null)
         {
-            // Installed from here, or the same mod installed from Nexus.
-            var entry = _cat.SiteEntry(m.Id) ?? _cat.Mods.FirstOrDefault(e => e.AltSiteId == m.Id && e.State != ModState.WillRemove);
+            var entry = SiteInstalledEntry(m);   // installed from here, or the same mod installed from Nexus
             if (ModEntry.IsLoaderName(m.Name)) { if (Btn(r, loaderLabel ?? (_bold.CalcSize(Lang.C(InstallLabel(m))).x + 24 * _s <= r.width ? InstallLabel(m) : "Check"), false)) { if (!Downloader.ShowCheck()) Toast("Install or repair BepInEx with Check BepInEx (get it on nomaddrivemods.online), with the game closed.", true); } return; }
             if (Community.Busy == m.Id) { StatusText(r, $"Installing… {Community.Progress * 100:0}%", CAccent); return; }
             if (entry != null && entry.UpdateStaged) { StatusText(r, entry.LiveLater ? "Press Reload to finish" : "Restart to finish", CWarn); return; }
@@ -211,20 +209,39 @@ namespace NomadModManager
             Lbl(new Rect(x, r.y + 10 * _s, w, 28 * _s), m.Name, _bold);
             Lbl(new Rect(x, r.y + 38 * _s, w, 22 * _s), $"{m.Category}  ·  by {m.Author}  ·  v{m.Version.TrimStart('v', 'V')}  ·  {Short(m.Downloads)} downloads", Tint(_small, CMuted));
             Lbl(new Rect(x, r.y + 64 * _s, w, 54 * _s), Clip(m.Summary, 140), _wrapSmall);
-            // Both buttons stay inside the card: Install takes what its words need, Details the rest (or goes, when
-            // the card is too narrow: clicking the card opens the details too).
-            // No Install button here: "Details" opens the mod's page, where Subscribe installs it and keeps it updated.
+            // Both buttons stay inside the card: Install (or Update) takes what its words need, Details the rest, and the
+            // status shows when the mod is installed. Install puts the mod in now, with the website mods it needs;
+            // Subscribe on its page does the same and keeps it updated.
             var by = r.yMax - 52 * _s;
-            var label = ModEntry.IsLoaderName(m.Name) ? InstallLabel(m) : "Details";
             float Need(string t) => Mathf.Max(120 * _s, _bold.CalcSize(Lang.C(t)).x + 36 * _s);
-            if (Need(label) > w) label = ModEntry.IsLoaderName(m.Name) ? "Check" : label;
-            var bw = Mathf.Min(Need(label), w);
-            if (ModEntry.IsLoaderName(m.Name)) SiteStatus(new Rect(x, by, bw, 40 * _s), m, label);
+            if (ModEntry.IsLoaderName(m.Name))
+            {
+                var label = InstallLabel(m);
+                if (Need(label) > w) label = "Check";
+                SiteStatus(new Rect(x, by, Mathf.Min(Need(label), w), 40 * _s), m, label);
+            }
             else
             {
-                if (Btn(new Rect(x, by, bw, 40 * _s), label, true)) OpenSiteDetails(m);
-                var sw = w - bw - 8 * _s;
-                if (sw > 90 * _s) SiteStatus(new Rect(x + bw + 8 * _s, by, sw, 40 * _s), m);
+                var entry = SiteInstalledEntry(m);
+                var bx = x;
+                if (entry == null || (entry.UpdateAvailable && !entry.UpdateStaged))
+                {
+                    // Not installed: Install. Installed with a newer version out: Update.
+                    var busy = Community.Busy == m.Id || _siteInstalling == m.Id;
+                    var main = entry == null ? "Install" : "Update";
+                    var mw = Mathf.Min(Need(busy ? "Installing…" : main), w);
+                    if (busy) StatusText(new Rect(bx, by, mw, 40 * _s), Community.Busy == m.Id ? $"Installing… {Community.Progress * 100:0}%" : "Installing…", CAccent);
+                    else if (Btn(new Rect(bx, by, mw, 40 * _s), main, true)) { if (entry == null) InstallSiteMod(m); else UpdateMod(entry); }
+                    bx += mw + 8 * _s;
+                    if (Need("Details") <= x + w - bx && Btn(new Rect(bx, by, Need("Details"), 40 * _s), "Details", false)) OpenSiteDetails(m);
+                }
+                else
+                {
+                    var bw = Mathf.Min(Need("Details"), w);
+                    if (Btn(new Rect(bx, by, bw, 40 * _s), "Details", false)) OpenSiteDetails(m);
+                    var sw = w - bw - 8 * _s;
+                    if (sw > 90 * _s) SiteStatus(new Rect(bx + bw + 8 * _s, by, sw, 40 * _s), m);
+                }
             }
             if (Hit(r)) OpenSiteDetails(m);
         }
@@ -366,8 +383,14 @@ namespace NomadModManager
                 $"{m.Category}  ·  by {m.Author}  ·  v{m.Version.TrimStart('v', 'V')}  ·  {Short(m.Downloads)} downloads  ·  {Short(m.Endorsements)} endorsements", Tint(_small, CMuted));
             var by = top + 70 * _s;
             var bx = rx;
-            // No Install button: Subscribe (below) installs the mod and keeps it updated. Only its status shows here.
-            if (ModEntry.IsLoaderName(m.Name) || _cat.SiteEntry(m.Id) != null || Community.Busy == m.Id) { SiteStatus(new Rect(bx, by, 160 * _s, 42 * _s), m); bx += 168 * _s; }
+            // Install puts the mod (and the website mods it needs) in now; Subscribe (below) does that and keeps it updated.
+            if (ModEntry.IsLoaderName(m.Name) || SiteInstalledEntry(m) != null || Community.Busy == m.Id || _siteInstalling == m.Id)
+            {
+                if (_siteInstalling == m.Id && Community.Busy != m.Id) StatusText(new Rect(bx, by, 160 * _s, 42 * _s), "Installing…", CAccent);
+                else SiteStatus(new Rect(bx, by, 160 * _s, 42 * _s), m);
+            }
+            else if (Btn(new Rect(bx, by, 160 * _s, 42 * _s), "Install", true)) InstallSiteMod(m, d);
+            bx += 168 * _s;
             if (Btn(new Rect(bx, by, 92 * _s, 42 * _s), "Page", false)) Application.OpenURL(m.Page);
             // Subscribe: the mod installs now and keeps itself updated; unsubscribing removes it.
             var sb = new Rect(bx + 100 * _s + (d.Mine ? 0 : 148 * _s), by, 170 * _s, 42 * _s);
@@ -522,6 +545,46 @@ namespace NomadModManager
             if (e == null || e.type != EventType.KeyDown || e.keyCode != k) return false;
             e.Use();
             return true;
+        }
+
+        private int _siteInstalling;   // a mod whose Install was pressed (its page is being read for what it needs)
+
+        /// <summary>The installed copy of a website mod: from the site, or the same mod installed from Nexus.</summary>
+        private ModEntry SiteInstalledEntry(SiteMod m) =>
+            _cat.SiteEntry(m.Id) ?? _cat.Mods.FirstOrDefault(e => e.AltSiteId == m.Id && e.State != ModState.WillRemove);
+
+        /// <summary>
+        /// Install on Browse mods: the mod and the website mods it needs that aren't installed (from its page), then the
+        /// Nexus mods it needs open one after another. A save backup is made first.
+        /// </summary>
+        private void InstallSiteMod(SiteMod m, SiteDetails known = null)
+        {
+            if (Community.Busy != 0 || _siteInstalling != 0) { Toast("Another mod is still installing — one moment.", false); return; }
+            if (known != null) { InstallSiteModWith(m, known); return; }
+            _siteInstalling = m.Id;
+            _host.StartCoroutine(Community.Details(m.Id, (d, err) =>
+            {
+                _siteInstalling = 0;
+                if (d == null) { Toast(err ?? $"Couldn't read {m.Name}'s page. Try again.", false); return; }
+                _cat.SetSiteInfo(d.Mod);
+                InstallSiteModWith(m, d);
+            }));
+        }
+
+        private void InstallSiteModWith(SiteMod m, SiteDetails d)
+        {
+            var ids = new List<int>();
+            var nexus = new List<int>();
+            foreach (var q in d.Requires)
+            {
+                var nx = q.Id == 0 ? NexusIdOf(q.Url) : 0;
+                if (q.Id > 0 && q.Id != m.Id && !_cat.IsSiteInstalled(q.Id) && !ModEntry.IsLoaderName(q.Name)) ids.Add(q.Id);
+                else if (nx > 0 && !_cat.IsInstalled(nx) && !IsLoaderReq(q.Name, nx)) nexus.Add(nx);
+            }
+            ids.Add(m.Id);
+            if (ids.Count == 1) InstallFromSite(m.Id, 0, m.Name);   // (makes the save backup)
+            else { Toast($"Installing {m.Name} and {ids.Count - 1} mod(s) it needs…", true); InstallSiteMany(ids.Distinct().ToList(), "Installed"); }
+            if (nexus.Count > 0) InstallNexusRequirements(nexus, m.Name);
         }
 
         private void InstallFromSite(int modId, int versionId, string name, Action afterOk = null)
