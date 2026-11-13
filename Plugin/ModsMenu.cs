@@ -440,8 +440,12 @@ namespace NomadModManager
             if (waiting.Count == 0) return;
             var site = waiting.Count(m => m.UpdateFrom == Community.HostName);
             var nexus = waiting.Count - site;
-            var where = site > 0 && nexus > 0 ? $"{site} on {Community.HostName}, {nexus} on Nexus" : site > 0 ? "on " + Community.HostName : "on Nexus";
-            Toast(waiting.Count == 1 ? $"1 mod update {where}." : $"{waiting.Count} mod updates {(site > 0 && nexus > 0 ? "(" + where + ")" : where)}.", true);
+            var host = Community.HostName;
+            string msg;
+            if (site > 0 && nexus > 0) msg = Lang.F("{0} mod updates ({1} on {2}, {3} on Nexus).", waiting.Count, site, host, nexus);
+            else if (waiting.Count == 1) msg = site > 0 ? Lang.F("1 mod update on {0}.", host) : Lang.T("1 mod update on Nexus.");
+            else msg = site > 0 ? Lang.F("{0} mod updates on {1}.", waiting.Count, host) : Lang.F("{0} mod updates on Nexus.", waiting.Count);
+            Toast(msg, true);
         }
 
         private void RunSearch(bool more)
@@ -948,9 +952,9 @@ namespace NomadModManager
                     _host.StartCoroutine(NexusAccount.Endorse(m.Id, entryVersion, !endorsed, (ok, err) =>
                     {
                         _nexusBusy = 0;
-                        if (!ok) { Toast("Couldn't endorse " + mod.Name + ": " + err, false); return; }
+                        if (!ok) { Toast(Lang.F("Couldn't endorse {0}: {1}", mod.Name, Lang.T(err)), false); return; }
                         if (!endorsed) mod.Endorsements++; else if (mod.Endorsements > 0) mod.Endorsements--;
-                        Toast(!endorsed ? $"Endorsed {mod.Name} on Nexus. Thanks, it helps the author!" : $"Took back your endorsement of {mod.Name}.", true);
+                        Toast(Lang.F(!endorsed ? "Endorsed {0} on Nexus. Thanks, it helps the author!" : "Took back your endorsement of {0}.", mod.Name), true);
                     }));
                 }
                 var tracked = NexusAccount.Tracked.Contains(m.Id);
@@ -961,8 +965,8 @@ namespace NomadModManager
                     _host.StartCoroutine(NexusAccount.Track(m.Id, !tracked, (ok, err) =>
                     {
                         _nexusBusy = 0;
-                        if (!ok) { Toast("Couldn't change tracking of " + mod.Name + ": " + err, false); return; }
-                        Toast(!tracked ? $"Tracking {mod.Name} on Nexus: its updates show in your Nexus notifications." : $"Stopped tracking {mod.Name}.", true);
+                        if (!ok) { Toast(Lang.F("Couldn't change tracking of {0}: {1}", mod.Name, Lang.T(err)), false); return; }
+                        Toast(Lang.F(!tracked ? "Tracking {0} on Nexus: its updates show in your Nexus notifications." : "Stopped tracking {0}.", mod.Name), true);
                     }));
                 }
             }
@@ -1282,7 +1286,8 @@ namespace NomadModManager
             Lbl(new Rect(tx, box.y + 10 * _s, box.width - 520 * _s, 26 * _s), "Nexus Mods account", _bold);
             string line;
             if (NexusAccount.SignedIn)
-                line = "Signed in as " + NexusAccount.UserName + (NexusAccount.Premium ? " (Premium)" : "") + (NexusAccount.UsingTestKey ? ", with your personal API key (for testing)" : "") + ". Endorse and Track work on mod pages.";
+                line = Lang.F(NexusAccount.UsingTestKey ? "Signed in as {0} with your personal API key (for testing). Endorse and Track work on mod pages."
+                              : NexusAccount.Premium ? "Signed in as {0} (Premium). Endorse and Track work on mod pages." : "Signed in as {0}. Endorse and Track work on mod pages.", NexusAccount.UserName);
             else if (NexusAccount.SigningIn) line = NexusAccount.Status;
             else if (NexusAccount.CanSignIn) line = "Sign in to endorse and track mods from the game. You sign in on Nexus's own page; the Mods menu never sees your password.";
             else line = "Test build: copy your personal API key from Nexus (Site preferences › API keys), then press Use key from clipboard.";

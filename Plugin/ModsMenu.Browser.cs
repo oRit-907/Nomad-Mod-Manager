@@ -277,7 +277,7 @@ namespace NomadModManager
             _blockedRect = box;
             Fill(box, CCard, 10 * _s);
             var bw = 290 * _s; var sw = 130 * _s;
-            Lbl(new Rect(box.x + 16 * _s, box.y, box.width - bw - sw - 48 * _s, box.height), "That link goes to " + Clip(host, 60) + ", outside Nexus Mods. It opens in your own web browser, not in here.", Tint(_wrap, CText));
+            Lbl(new Rect(box.x + 16 * _s, box.y, box.width - bw - sw - 48 * _s, box.height), Lang.F("That link goes to {0}, outside Nexus Mods. It opens in your own web browser, not in here.", Clip(host, 60)), Tint(_wrap, CText));
             if (PadBtn(new Rect(box.xMax - bw - sw - 24 * _s, box.y + 11 * _s, bw, 42 * _s), "Open in my web browser", true))
             {
                 if (_blockedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || _blockedUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) Application.OpenURL(_blockedUrl);

@@ -99,5 +99,12 @@ namespace NomadModManager
         }
 
         public static GUIContent C(string text) => new GUIContent(T(text));
+
+        /// <summary>A text with names or numbers in it: the template is translated, then {0}, {1}… are filled in.</summary>
+        public static string F(string template, params object[] args)
+        {
+            try { return string.Format(T(template), args); }
+            catch (FormatException) { return string.Format(template, args); }
+        }
     }
 }

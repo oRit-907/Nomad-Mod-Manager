@@ -176,7 +176,7 @@ namespace NomadModManager
                 _apiKey = "";
                 Save();
                 Activity.Add("Signed in to Nexus Mods as " + UserName);
-                Finish(done, true, "Signed in to Nexus Mods as " + UserName + ".");
+                Finish(done, true, Lang.F("Signed in to Nexus Mods as {0}.", UserName));
             }
             finally
             {

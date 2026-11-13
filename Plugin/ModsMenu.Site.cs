@@ -586,7 +586,7 @@ namespace NomadModManager
             }
             ids.Add(m.Id);
             if (ids.Count == 1) InstallFromSite(m.Id, 0, m.Name);   // (makes the save backup)
-            else { Toast($"Installing {m.Name} and {ids.Count - 1} mod(s) it needs…", true); InstallSiteMany(ids.Distinct().ToList(), "Installed"); }
+            else { Toast(Lang.F("Installing {0} and {1} mod(s) it needs…", m.Name, ids.Count - 1), true); InstallSiteMany(ids.Distinct().ToList(), "Installed"); }
             if (nexus.Count > 0) InstallNexusRequirements(nexus, m.Name);
         }
 
