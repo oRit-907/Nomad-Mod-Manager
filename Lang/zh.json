@@ -283,5 +283,8 @@
  "Finding the browser on GitHub…": "正在 GitHub 上查找浏览器…",
  "Finding the newest file…": "正在查找最新文件…",
  "Download mods from their own page on Nexus (the Files tab), so the menu knows which mod it is.": "请从 Nexus 上各 mod 自己的页面 (Files 标签) 下载,这样菜单才知道是哪个 mod。",
- "Open a mod, go to its Files tab and press the download button: the Mods menu installs it.": "打开一个 mod,进入 Files 标签并按下载按钮: Mods 菜单会安装它。"
+ "Open a mod, go to its Files tab and press the download button: the Mods menu installs it.": "打开一个 mod,进入 Files 标签并按下载按钮: Mods 菜单会安装它。",
+ "That's the Nexus edition of the Mods menu. You have the website edition, which has everything the Nexus one has and updates itself from the website, so it isn't installed over it.": "这是 Mods 菜单的 Nexus 版本。你用的是网站版本,它包含 Nexus 版本的全部功能,并会从网站自动更新,所以不会覆盖安装。",
+ "Switched to the Nexus edition of the Mods menu: your mods, profiles, settings and save backups are all here. Website mods now get their updates from Nexus when they're on it; your website account and subscriptions are kept for if you switch back.": "已切换到 Mods 菜单的 Nexus 版本: 你的 mod、配置、设置和存档备份都还在。网站上的 mod 如果也在 Nexus 上,现在会从 Nexus 更新;你的网站账号和订阅会保留,方便你切换回去。",
+ "Switched to the website edition of the Mods menu: your mods, profiles, settings and save backups are all here, and your website subscriptions and account work again.": "已切换到 Mods 菜单的网站版本: 你的 mod、配置、设置和存档备份都还在,网站订阅和账号也恢复正常。"
 }

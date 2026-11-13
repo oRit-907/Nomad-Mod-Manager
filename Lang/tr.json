@@ -284,5 +284,8 @@
  "Finding the browser on GitHub…": "Tarayıcı GitHub'da aranıyor…",
  "Finding the newest file…": "En yeni dosya aranıyor…",
  "Download mods from their own page on Nexus (the Files tab), so the menu knows which mod it is.": "Modları Nexus'taki kendi sayfalarından indir (Files sekmesi), böylece menü hangi mod olduğunu bilir.",
- "Open a mod, go to its Files tab and press the download button: the Mods menu installs it.": "Bir mod aç, Files sekmesine git ve indirme düğmesine bas: mod menüsü onu kurar."
+ "Open a mod, go to its Files tab and press the download button: the Mods menu installs it.": "Bir mod aç, Files sekmesine git ve indirme düğmesine bas: mod menüsü onu kurar.",
+ "That's the Nexus edition of the Mods menu. You have the website edition, which has everything the Nexus one has and updates itself from the website, so it isn't installed over it.": "Bu, mod menüsünün Nexus sürümü. Sende site sürümü var: Nexus sürümündeki her şey onda da var ve kendini siteden güncelliyor, bu yüzden üzerine kurulmuyor.",
+ "Switched to the Nexus edition of the Mods menu: your mods, profiles, settings and save backups are all here. Website mods now get their updates from Nexus when they're on it; your website account and subscriptions are kept for if you switch back.": "Mod menüsünün Nexus sürümüne geçildi: modların, profillerin, ayarların ve kayıt yedeklerin hepsi burada. Site modları artık Nexus'ta varsa güncellemelerini oradan alır; geri dönersen diye site hesabın ve abonelikların saklanıyor.",
+ "Switched to the website edition of the Mods menu: your mods, profiles, settings and save backups are all here, and your website subscriptions and account work again.": "Mod menüsünün site sürümüne geçildi: modların, profillerin, ayarların ve kayıt yedeklerin hepsi burada, site aboneliklerin ve hesabın yeniden çalışıyor."
 }

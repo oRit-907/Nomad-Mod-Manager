@@ -87,6 +87,7 @@ namespace NomadModManager
             NexusClientId = Config.Bind("Nexus", "SignInClientId", "",
                 "Leave empty. (For testing Sign in with Nexus before it's built in: the OAuth client id Nexus Mods gave the Mods menu.)");
             NexusAccount.Load();
+            EditionSwitch.Check();
 #if NEXUS_EDITION
             // The Nexus edition: Nexus Mods only. Files are downloaded by the player in their own web browser.
             DownloadsFolder = Config.Bind("Nexus", "DownloadsFolder", "",

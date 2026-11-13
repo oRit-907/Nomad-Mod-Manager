@@ -52,9 +52,13 @@ namespace NomadModManager
         // ------------------------------------------------------------------ entry points
 
         /// <summary>Nexus mods to install (file id 0 = the mod's newest main file): they open one after another in the in-game browser.</summary>
+        private const string EditionNote = "That's the Nexus edition of the Mods menu. You have the website edition, which has everything the Nexus one has and updates itself from the website, so it isn't installed over it.";
+
         private void BrowseNexus(List<(int ModId, int FileId)> items, string what)
         {
-            items = items.Where(i => i.ModId > 0).GroupBy(i => i.ModId).Select(g => g.First()).ToList();
+            // The Nexus page of the Mods menu has the Nexus edition: this (website) edition updates from the website instead.
+            if (items.Any(i => i.ModId == Nexus.DownloaderModId)) Toast(EditionNote, true);
+            items = items.Where(i => i.ModId > 0 && i.ModId != Nexus.DownloaderModId).GroupBy(i => i.ModId).Select(g => g.First()).ToList();
             if (items.Count == 0) return;
             SaveBackups.Create("before installing " + what, true);
             Activity.Add($"Installing {what} from Nexus in the Mods menu's browser");
@@ -395,6 +399,12 @@ namespace NomadModManager
             {
                 var modId = InGameBrowser.ModIdOf(pageUrl);
                 if (modId == 0) modId = _browserNow.ModId;
+                if (modId == Nexus.DownloaderModId)
+                {
+                    // Downloaded the Nexus edition of the Mods menu here: not installed over this (website) edition.
+                    _browserStatus = EditionNote; _browserStatusGood = false;
+                    yield break;
+                }
                 if (modId == 0)
                 {
                     _browserStatus = "Download mods from their own page on Nexus (the Files tab), so the menu knows which mod it is.";

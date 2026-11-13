@@ -171,6 +171,8 @@ namespace NomadModManager
         {
             if (IsOpen) return;
             IsOpen = true;
+            var switched = EditionSwitch.Take();
+            if (switched.Length > 0) Toast(switched, true);
             OpenedFromMainMenu = panel is MainMenuPanel;
             OpenedFromPause = false;
             _scrollY = 0;

@@ -230,7 +230,9 @@ namespace NomadModManager
                 if (m.Name.Length == 0) m.Name = Path.GetFileNameWithoutExtension(full);
                 m.IsSelf = m.Guids.Contains(ModManagerPlugin.Guid);
 
-                var site = Community.OwnerOf(fromSite, m.Rel);
+                // The Nexus edition can't reach the website, so mods installed there by the website edition are treated like
+                // any other mod (matched to Nexus for updates). Their website records stay, for switching back.
+                var site = Edition.Nexus ? null : Community.OwnerOf(fromSite, m.Rel);
                 if (site != null)
                 {
                     // Installed from the community website: updates come from there.
@@ -248,14 +250,16 @@ namespace NomadModManager
                 }
                 else MatchDownloader(m);
                 if (m.SiteId == 0 && m.NexusId == 0 && _byName.TryGetValue(NameKey(m.Name), out var byName)) m.NexusId = byName;
-                if (m.IsSelf && m.NexusId == 0) m.NexusId = Nexus.DownloaderModId; // this menu ships on Nomad Mod Downloader's page
+                if (m.IsSelf && m.NexusId == 0) m.NexusId = Nexus.DownloaderModId; // the Mods menu's Nexus page
                 if (m.SiteId == 0 && m.NexusId > 0 && _nexus.TryGetValue(m.NexusId, out var nx))
                 {
                     m.NexusVersion = nx.Version;
                     if (nx.Author.Length > 0) m.Author = nx.Author;
                     m.Summary = nx.Summary;
-                    // The page's version is the downloader's, not this menu's: the downloader checks this menu's file itself.
-                    m.UpdateAvailable = !m.IsSelf && IsNewer(nx.Version, m.Version);
+                    // The Mods menu itself: the Nexus edition is updated from its Nexus page (the player downloads it there). The
+                    // website edition never takes the Nexus file, which would swap it for the Nexus edition: it updates from
+                    // the website.
+                    m.UpdateAvailable = (!m.IsSelf || Edition.Nexus) && IsNewer(nx.Version, m.Version);
                 }
                 if (!m.IsSelf) CrossCheck(m);
                 if (!UpdatesChecked) m.UpdateAvailable = false;   // (not until both checks are back)
