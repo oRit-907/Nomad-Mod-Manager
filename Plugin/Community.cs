@@ -354,6 +354,7 @@ namespace NomadModManager
                 foreach (var s in subs)
                 {
                     if (s.VersionId <= 0) continue;
+                    if (ModEntry.IsLoaderName(s.Name)) continue;   // BepInEx: already there (Check BepInEx looks after it)
                     if (MatchHost.IsPinned(s.Id)) continue;   // held on a host's version until "Back to my mods"
                     var have = Installed().FirstOrDefault(m => m.Id == s.Id);
                     if (have != null && have.VersionId == s.VersionId)

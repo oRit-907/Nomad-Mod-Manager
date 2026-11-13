@@ -350,9 +350,11 @@ namespace NomadModManager
                 var row = new Rect(r.x, ly, leftW, 44 * _s);
                 Fill(row, CRow, 10 * _s);
                 var nx = q.Id == 0 ? NexusIdOf(q.Url) : 0;
-                var have = q.Id > 0 ? _cat.IsSiteInstalled(q.Id) : nx > 0 && _cat.IsInstalled(nx);
+                // BepInEx is always there (the Mods menu runs on it), so it's never installed or offered as missing.
+                var loader = IsLoaderReq(q.Name, nx);
+                var have = loader || (q.Id > 0 ? _cat.IsSiteInstalled(q.Id) : nx > 0 && _cat.IsInstalled(nx));
                 if (q.Id > 0 && !have) missing.Add(q.Id);
-                if (nx > 0 && !have && !IsLoaderReq(q.Name, nx)) missingNexus.Add(nx);
+                if (nx > 0 && !have) missingNexus.Add(nx);
                 StatusText(new Rect(row.x + 14 * _s, row.y, 30 * _s, row.height), "", have ? CGood : q.Id > 0 ? CWarn : CMuted);
                 var label = q.Name + (nx > 0 ? "  (Nexus Mods)" : q.Id == 0 ? "  (outside the site)" : "") + (q.Note.Length > 0 ? "  —  " + q.Note : "");
                 Lbl(new Rect(row.x + 34 * _s, row.y, row.width - 170 * _s, row.height), Clip(label, 70), _body);
@@ -578,8 +580,9 @@ namespace NomadModManager
             foreach (var q in d.Requires)
             {
                 var nx = q.Id == 0 ? NexusIdOf(q.Url) : 0;
-                if (q.Id > 0 && q.Id != m.Id && !_cat.IsSiteInstalled(q.Id) && !ModEntry.IsLoaderName(q.Name)) ids.Add(q.Id);
-                else if (nx > 0 && !_cat.IsInstalled(nx) && !IsLoaderReq(q.Name, nx)) nexus.Add(nx);
+                if (IsLoaderReq(q.Name, nx)) continue;   // BepInEx: skipped, it's already there
+                if (q.Id > 0 && q.Id != m.Id && !_cat.IsSiteInstalled(q.Id)) ids.Add(q.Id);
+                else if (nx > 0 && !_cat.IsInstalled(nx)) nexus.Add(nx);
             }
             ids.Add(m.Id);
             if (ids.Count == 1) InstallFromSite(m.Id, 0, m.Name);   // (makes the save backup)
