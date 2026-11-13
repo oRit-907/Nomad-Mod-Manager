@@ -170,6 +170,7 @@ namespace NomadModManager
         {
             _watchSince = DateTime.Now.AddSeconds(-5);
             _watchDirs = FindDownloadDirs();
+            _scan.Start(_watchDirs, _watchSince);
             ModManagerPlugin.Log.LogInfo("Waiting for a Nexus download in: " + (_watchDirs.Count > 0 ? string.Join(", ", _watchDirs.ToArray()) : "(no Downloads folder found)"));
             _seenSize.Clear();
             _wrongType.Clear();
@@ -179,6 +180,7 @@ namespace NomadModManager
         private void CloseBrowser()
         {
             _browserOpen = false;
+            _scan.Stop();
             _browserQueue.Clear();
             _browserInstalling = false;
             _cat.Refresh();
@@ -195,40 +197,28 @@ namespace NomadModManager
 
         private bool BrowserDismiss() => false;
 
+        private readonly DownloadsScan _scan = new DownloadsScan();
+        private int _scanSeen;
+
+        /// <summary>Every frame while the panel shows: acts on the background scan's newest snapshot (no disk work here).</summary>
         private void WatchDownloads()
         {
-            if (!_browserOpen || _browserInstalling || _browserNow.ModId == 0 || Time.unscaledTime < _nextWatch) return;
-            _nextWatch = Time.unscaledTime + 1f;
-            var all = new List<string>();
-            foreach (var dir in _watchDirs)
+            if (!_browserOpen || _browserInstalling || _browserNow.ModId == 0) return;
+            var snap = _scan.Latest;
+            if (snap.Number == _scanSeen) return;
+            _scanSeen = snap.Number;
+            foreach (var e in snap.Archives)
             {
-                try { all.AddRange(Directory.GetFiles(dir)); } catch { }
-            }
-            // a browser still writing: Chrome/Edge/Opera .crdownload, Firefox .part, others .partial / .download
-            // (only ones written to in the last two minutes: an old abandoned download doesn't hold things up)
-            var busy = all.Any(f => (f.EndsWith(".crdownload", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".part", StringComparison.OrdinalIgnoreCase)
-                                     || f.EndsWith(".partial", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".download", StringComparison.OrdinalIgnoreCase))
-                                    && Recent(f));
-            foreach (var f in all)
-            {
+                var f = e.Path;
                 if (_handled.Contains(f)) continue;
-                var ext = Path.GetExtension(f).ToLowerInvariant();
-                if (ext != ".zip" && ext != ".dll" && ext != ".7z" && ext != ".rar") continue;
-                FileInfo fi;
-                try { fi = new FileInfo(f); } catch { continue; }
-                if (fi.LastWriteTime < _watchSince && fi.CreationTime < _watchSince) continue;
+                if (e.Written < _watchSince && e.Created < _watchSince) continue;
                 // finished = the same size twice in a row, nothing still downloading, and it can be opened
-                if (busy || !_seenSize.TryGetValue(f, out var was) || was != fi.Length || fi.Length == 0) { _seenSize[f] = fi.Length; continue; }
-                try { using (File.Open(f, FileMode.Open, FileAccess.Read, FileShare.Read)) { } } catch { continue; }
+                if (snap.Busy || !_seenSize.TryGetValue(f, out var was) || was != e.Length || e.Length == 0) { _seenSize[f] = e.Length; continue; }
+                if (!e.CanOpen) continue;
                 _handled.Add(f);
                 _host.StartCoroutine(InstallDownloaded(f));
                 return;
             }
-        }
-
-        private static bool Recent(string f)
-        {
-            try { return (DateTime.Now - File.GetLastWriteTime(f)).TotalMinutes < 2; } catch { return false; }
         }
 
         private void BrowserType(char ch) { }
@@ -299,7 +289,7 @@ namespace NomadModManager
             y += 60 * _s;
 
             // Already downloaded it (before pressing Install, or while the game was closed)? Pick it here.
-            if (Time.unscaledTime >= _nextRecent) { _nextRecent = Time.unscaledTime + 3f; _recent = RecentArchives(); }
+            if (Time.unscaledTime >= _nextRecent) { _nextRecent = Time.unscaledTime + 1f; _recent = RecentArchives(); }
             if (_recent.Count == 0 || _browserInstalling) return;
             Lbl(new Rect(r.x, y, r.width, 30 * _s), "Already downloaded it? Recent downloads:", Tint(_smallBold, CText));
             y += 36 * _s;
@@ -316,25 +306,11 @@ namespace NomadModManager
         private List<string> _recent = new List<string>();
         private float _nextRecent;
 
-        /// <summary>The newest mod archives in the watched folders from the last day (at most 4).</summary>
+        /// <summary>The newest mod archives in the watched folders from the last day (at most 4), from the background scan.</summary>
         private List<string> RecentArchives()
         {
-            var list = new List<(string F, DateTime T)>();
-            foreach (var dir in _watchDirs)
-            {
-                try
-                {
-                    foreach (var f in Directory.GetFiles(dir))
-                    {
-                        var ext = Path.GetExtension(f).ToLowerInvariant();
-                        if (ext != ".zip" && ext != ".7z" && ext != ".rar" && ext != ".dll") continue;
-                        var t = File.GetLastWriteTime(f);
-                        if ((DateTime.Now - t).TotalHours < 24) list.Add((f, t));
-                    }
-                }
-                catch { }
-            }
-            return list.OrderByDescending(x => x.T).Take(4).Select(x => x.F).ToList();
+            var now = DateTime.Now;
+            return _scan.Latest.Archives.Where(e => (now - e.Written).TotalHours < 24).OrderByDescending(e => e.Written).Take(4).Select(e => e.Path).ToList();
         }
     }
 }

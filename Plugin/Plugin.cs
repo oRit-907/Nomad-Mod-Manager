@@ -44,6 +44,8 @@ namespace NomadModManager
         {
             I = this;
             Log = Logger;
+            // 1.13.1: the menu draws with GUI (never GUILayout), so Unity's extra layout pass every frame is skipped.
+            useGUILayout = false;
             AutoStart = Config.Bind("General", "StartNewModsAutomatically", true,
                 "Start newly installed mods right away when they can run without a restart (only at the main menu).");
             Scale = Config.Bind("General", "MenuScale", 1f, "Size of the Mods menu (1 = 1080p size).");

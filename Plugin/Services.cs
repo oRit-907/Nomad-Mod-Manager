@@ -307,15 +307,31 @@ namespace NomadModManager
         }
 
         /// <summary>The mod's thumbnail, or null while it loads (or if it's a format Unity can't read).</summary>
+        // 1.13.1: when used, so the least recently shown pictures can be let go (at most ThumbLimit kept).
+        private static readonly Dictionary<string, float> ThumbUsed = new Dictionary<string, float>();
+        private const int ThumbLimit = 160;
+
         public static Texture2D Thumb(MonoBehaviour host, string url)
         {
             if (string.IsNullOrEmpty(url)) return null;
-            if (Thumbs.TryGetValue(url, out var t)) return t;
+            if (Thumbs.TryGetValue(url, out var t)) { ThumbUsed[url] = Time.unscaledTime; return t; }
             if (ThumbLoading.Add(url)) host.StartCoroutine(LoadThumb(url));
             return null;
         }
 
         private static int _thumbGen;
+
+        /// <summary>Over the limit: the pictures not shown for the longest go (only ones not shown in the last 10 s).</summary>
+        private static void TrimThumbs()
+        {
+            if (Thumbs.Count <= ThumbLimit) return;
+            var now = Time.unscaledTime;
+            foreach (var url in ThumbUsed.Where(kv => now - kv.Value > 10f).OrderBy(kv => kv.Value).Take(Thumbs.Count - ThumbLimit).Select(kv => kv.Key).ToList())
+            {
+                if (Thumbs.TryGetValue(url, out var tex) && tex != null) UnityEngine.Object.Destroy(tex);
+                Thumbs.Remove(url); ThumbUsed.Remove(url); ThumbLoading.Remove(url);
+            }
+        }
 
         /// <summary>Forgets the pictures it has (the Refresh button), so changed ones load again.</summary>
         public static void ClearThumbs(Func<string, bool> which)
@@ -324,6 +340,7 @@ namespace NomadModManager
             {
                 if (Thumbs[url] != null) UnityEngine.Object.Destroy(Thumbs[url]);
                 Thumbs.Remove(url);
+                ThumbUsed.Remove(url);
                 ThumbLoading.Remove(url);
             }
             _thumbGen++;
@@ -347,9 +364,16 @@ namespace NomadModManager
                         tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                         if (!tex.LoadImage(data)) { UnityEngine.Object.Destroy(tex); tex = null; }
                     }
-                    if (tex != null) { tex.wrapMode = TextureWrapMode.Clamp; tex.filterMode = FilterMode.Bilinear; UnityEngine.Object.DontDestroyOnLoad(tex); }
+                    if (tex != null)
+                    {
+                        tex.wrapMode = TextureWrapMode.Clamp; tex.filterMode = FilterMode.Bilinear; UnityEngine.Object.DontDestroyOnLoad(tex);
+                        // Only the graphics card's copy is needed to draw it: the copy in memory is let go.
+                        if (tex.isReadable) { try { tex.Apply(false, true); } catch { } }
+                    }
                 }
                 Thumbs[url] = tex;
+                ThumbUsed[url] = Time.unscaledTime;
+                TrimThumbs();
             }
         }
     }

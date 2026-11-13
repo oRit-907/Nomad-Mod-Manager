@@ -492,6 +492,7 @@ namespace NomadModManager
         private static int _syncErrors;
         private static readonly List<string> Lines = new List<string>();
         private static PropertyInfo _clientConnected, _serverActive;
+        private static Func<bool> _isConnected, _isHost;   // (1.13.1: called directly, not through reflection every frame)
         private static LobbyInfo _hostInfo;
         private static List<LobbyMods.Player> _players = new List<LobbyMods.Player>();
 
@@ -507,9 +508,11 @@ namespace NomadModManager
                     _clientConnected = mirror.GetType("Mirror.NetworkClient")?.GetProperty("isConnected", BindingFlags.Static | BindingFlags.Public);
                     _serverActive = mirror.GetType("Mirror.NetworkServer")?.GetProperty("active", BindingFlags.Static | BindingFlags.Public);
                     if (_clientConnected == null) return;
+                    _isConnected = SafeJoin.Getter(_clientConnected);
+                    _isHost = _serverActive != null ? SafeJoin.Getter(_serverActive) : () => false;
                 }
-                var host = _serverActive != null && (bool)_serverActive.GetValue(null, null);
-                var now = !host && (bool)_clientConnected.GetValue(null, null);
+                var host = _isHost();
+                var now = !host && _isConnected();
                 if (now)
                 {
                     if (LobbyMods.Host != null) _hostInfo = LobbyMods.Host;

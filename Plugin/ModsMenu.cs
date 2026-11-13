@@ -2290,6 +2290,7 @@ namespace NomadModManager
 
         private void DrawToasts()
         {
+            if (_toasts.Count == 0) return;
             _toasts.RemoveAll(x => Time.unscaledTime > x.Until);
             if (_toasts.Count == 0) return;
             Styles();

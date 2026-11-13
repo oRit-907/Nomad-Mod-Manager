@@ -40,6 +40,14 @@ namespace NomadModManager
 
         private static ConfigEntry<bool> _on;
         private static PropertyInfo _clientActive, _serverActive;
+        private static Func<bool> _isClient, _isServer;   // (1.13.1: called directly, not through reflection every frame)
+
+        /// <summary>A static bool property as a plain call (falls back to reflection if it can't be bound).</summary>
+        internal static Func<bool> Getter(PropertyInfo p)
+        {
+            try { return (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), p.GetGetMethod()); }
+            catch { return () => (bool)p.GetValue(null, null); }
+        }
         private static bool _setup, _failed;
         private static float _nextTolerant;
 
@@ -68,7 +76,7 @@ namespace NomadModManager
             try
             {
                 if (!_setup && !Setup()) return;
-                var guest = (bool)_clientActive.GetValue(null, null) && !(bool)_serverActive.GetValue(null, null);
+                var guest = _isClient() && !_isServer();
                 if (guest && !Engaged && On) Engage();
                 else if (!guest && Engaged) Release();
                 if (Time.realtimeSinceStartup >= _nextTolerant) { _nextTolerant = Time.realtimeSinceStartup + 5f; Tolerant(); }
@@ -90,6 +98,7 @@ namespace NomadModManager
             _clientActive = client?.GetProperty("active", BindingFlags.Static | BindingFlags.Public);
             _serverActive = server?.GetProperty("active", BindingFlags.Static | BindingFlags.Public);
             if (_clientActive == null || _serverActive == null) throw new Exception("this version of the game's networking isn't recognised");
+            _isClient = Getter(_clientActive); _isServer = Getter(_serverActive);
             _setup = true;
             return true;
         }
