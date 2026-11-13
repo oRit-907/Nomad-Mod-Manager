@@ -93,6 +93,13 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.13.1[/b][/size]
+[list]
+[*][b]Install is back on Browse mods[/b]: on every card and mod page, with the website mods it needs. Cards show Update when a newer version is out. BepInEx is never installed as a requirement (it's already there).
+[*][b]Smoother[/b]: the menu draws less every frame, keeps less picture memory, and its multiplayer checks are lighter.
+[*][b]Switching between this and the Nexus edition keeps everything[/b]: mods, profiles, settings and save backups. This edition never installs the Nexus one over itself.
+[*][b]More of the menu in your language[/b]: 170 more phrases in all 11 languages, including the in-game browser, Install and update messages.
+[/list]
 [size=3][b]1.12.1 – 1.12.3[/b][/size]
 [list]
 [*]For a mod that's on both this site and Nexus, updates are only offered after both versions are checked, from whichever is higher, and never when yours is the same version or newer

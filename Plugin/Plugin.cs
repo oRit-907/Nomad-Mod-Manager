@@ -84,8 +84,11 @@ namespace NomadModManager
             EndOnQuit = Config.Bind("General", "EndGameAfterQuit", true,
                 "Make sure the game really ends after you quit. Some mods leave work running that keeps the game open in the background (Steam still shows it as running).");
             Application.quitting += OnQuitting;
-            NexusClientId = Config.Bind("Nexus", "SignInClientId", "",
-                "Leave empty. (For testing Sign in with Nexus before it's built in: the OAuth client id Nexus Mods gave the Mods menu.)");
+            // Sign in with Nexus stays hidden until Nexus registers the app (NexusAccount.ClientIdBuiltIn); a test build
+            // (-p:TestKey=true) can set a client id in the config.
+#if NEXUS_TESTKEY
+            NexusClientId = Config.Bind("Nexus", "SignInClientId", "", "Test builds only: the OAuth client id Nexus Mods gave the Mods menu.");
+#endif
             NexusAccount.Load();
             EditionSwitch.Check();
 #if NEXUS_EDITION
