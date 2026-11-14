@@ -152,21 +152,33 @@ namespace NomadModManager
                 var stamp = DateTime.Now;
                 var dir = Path.Combine(BackupDir, stamp.ToString("yyyy-MM-dd_HH-mm-ss") + (automatic ? "_auto" : ""));
                 for (var n = 2; Directory.Exists(dir); n++) dir = Path.Combine(BackupDir, stamp.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + n);
-                long size = 0;
-                foreach (var (full, rel) in files)
+                if (automatic)
                 {
-                    try
+                    // 1.13.3: the automatic backup (before a mod is installed, removed or switched) is copied in the
+                    // background. Copying a few hundred save files stopped the game for a second each time (the
+                    // stutter log showed 1.1 s at the click on Install); nothing waits for it, since changing a mod
+                    // doesn't touch the saves.
+                    _last = DateTime.Now;
+                    Activity.Add("Backed up your saves (" + reason + ")");
+                    string backups = BackupDir;
+                    System.Threading.ThreadPool.QueueUserWorkItem(_ =>
                     {
-                        var dest = Path.Combine(dir, rel);
-                        Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                        File.Copy(full, dest, true);
-                        size += new FileInfo(dest).Length;
-                    }
-                    catch (IOException) { /* in use by the game: skip it */ }
+                        try
+                        {
+                            CopyFiles(files, dir);
+                            File.WriteAllText(Path.Combine(dir, ".backup-reason.txt"), reason);
+                            PruneIn(backups);
+                        }
+                        catch (Exception e)
+                        {
+                            try { ModManagerPlugin.Log?.LogWarning("Couldn't back up the saves: " + e.Message); } catch { }
+                        }
+                    });
+                    return null;
                 }
+                long size = CopyFiles(files, dir);
                 File.WriteAllText(Path.Combine(dir, ".backup-reason.txt"), reason);
                 _last = DateTime.Now;
-                if (automatic) Prune();
                 Activity.Add("Backed up your saves (" + reason + ")");
                 return new Backup { Dir = dir, Reason = reason, Time = stamp, Size = size, Files = files.Count };
             }
@@ -175,6 +187,40 @@ namespace NomadModManager
                 ModManagerPlugin.Log?.LogWarning("Couldn't back up the saves: " + e.Message);
                 return null;
             }
+        }
+
+        private static long CopyFiles(List<(string full, string rel)> files, string dir)
+        {
+            long size = 0;
+            foreach (var (full, rel) in files)
+            {
+                try
+                {
+                    var dest = Path.Combine(dir, rel);
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                    File.Copy(full, dest, true);
+                    size += new FileInfo(dest).Length;
+                }
+                catch (IOException) { /* in use by the game: skip it */ }
+            }
+            return size;
+        }
+
+        /// <summary>The oldest automatic backups go (file work only, so it can run off the main thread).</summary>
+        private static void PruneIn(string backups)
+        {
+            try
+            {
+                if (!Directory.Exists(backups)) return;
+                var autos = Directory.GetDirectories(backups).Where(d => d.EndsWith("_auto")).OrderByDescending(d =>
+                {
+                    var reasonFile = Path.Combine(d, ".backup-reason.txt");
+                    return File.Exists(reasonFile) ? File.GetLastWriteTime(reasonFile) : Directory.GetCreationTime(d);
+                }).Skip(Keep).ToList();
+                foreach (var old in autos)
+                    try { Directory.Delete(old, true); } catch { }
+            }
+            catch { }
         }
 
         public static List<Backup> List()

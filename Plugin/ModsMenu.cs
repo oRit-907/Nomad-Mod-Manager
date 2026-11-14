@@ -507,15 +507,32 @@ namespace NomadModManager
         public void Draw()
         {
             _s = Mathf.Max(0.6f, Screen.height / 1080f * _host.Scale.Value);
+            long t0 = System.Diagnostics.Stopwatch.GetTimestamp(), t1 = t0;
             if (IsOpen)
             {
                 Styles();
+                t1 = System.Diagnostics.Stopwatch.GetTimestamp();
                 DrawScreen();
                 if (Event.current.type == EventType.Repaint) FinishNav();
             }
-            else DrawLobbyFilter();
+            else
+            {
+                DrawLobbyFilter();
+                WarmStep();
+            }
+            long t2 = System.Diagnostics.Stopwatch.GetTimestamp();
             DrawToasts();
+            // Times a slow draw (the first few only), so the log says which part a stutter came from.
+            long t3 = System.Diagnostics.Stopwatch.GetTimestamp();
+            double f = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            if ((t3 - t0) * f >= 60.0 && _slowDraws < 3)
+            {
+                _slowDraws++;
+                ModManagerPlugin.Log.LogInfo($"Slow Mods menu draw ({Event.current?.type}): {(t3 - t0) * f:0} ms (styles {(t1 - t0) * f:0}, {(IsOpen ? "menu" : "lobby filter")} {(t2 - t1) * f:0}, messages {(t3 - t2) * f:0}; font {_font?.name ?? "not chosen yet"}).");
+            }
         }
+
+        private int _slowDraws;
 
         private void DrawScreen()
         {
@@ -2505,6 +2522,51 @@ namespace NomadModManager
         // ==================================================================
         // Style
 
+        // 1.13.3: the menu's text styles are got ready while it is closed, one a frame. This game's Unity lays text out
+        // with its newer text system, which makes its own copy of each font and its letters the first time a style is
+        // used; that happened in the frame the menu opened (the stutter log showed 370 ms on the click, and more each
+        // time a new size of text first appeared).
+        private int _warmStep;
+        private float _warmScale = -1f;
+        private GUIContent _warmContent;
+        private static string _warmChars;
+
+        private void WarmStep()
+        {
+            try
+            {
+                if (_warmStep < 0 && Mathf.Approximately(_warmScale, _s)) return;
+                if (Event.current == null || Event.current.type != EventType.Repaint) return;
+                // (only once one of the game's menus is up: its fonts are loaded then, and the menu can't be opened before)
+                if (ModManagerPlugin.I == null || (ModManagerPlugin.I.MainMenu == null && ModManagerPlugin.I.PauseMenu == null)) return;
+                if (!Mathf.Approximately(_warmScale, _s)) { _warmScale = _s; _warmStep = 0; }
+                if (_warmStep == 0) { Styles(); _warmStep = 1; return; }
+                GUIStyle[] all = { _body, _bold, _small, _smallBold, _nav, _h2, _wrap, _wrapSmall };
+                int i = _warmStep - 1;
+                if (i >= all.Length) { _warmStep = -1; return; }
+                _warmStep++;
+                if (all[i] == null) return;
+                if (_warmChars == null)
+                {
+                    var sb = new System.Text.StringBuilder();
+                    for (char c = ' '; c <= '~'; c++) sb.Append(c);
+                    sb.Append("‹›…–—·×✓");
+                    _warmChars = sb.ToString();
+                }
+                if (_warmContent == null) _warmContent = new GUIContent();
+                _warmContent.text = _warmChars;
+                long w0 = System.Diagnostics.Stopwatch.GetTimestamp();
+                all[i].CalcSize(_warmContent);
+                double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - w0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                if (ms >= 40.0) ModManagerPlugin.Log.LogInfo($"Mods menu warm-up: text style {i + 1} of {all.Length} took {ms:0} ms.");
+            }
+            catch
+            {
+                _warmStep = -1;
+                _warmScale = _s;
+            }
+        }
+
         private void Styles()
         {
             if (Mathf.Approximately(_styleScale, _s) && _body != null) return;
@@ -2532,13 +2594,22 @@ namespace NomadModManager
         {
             try
             {
+                // The plain Noto Sans for most languages, the game's Chinese, Japanese or Korean one for those. (It used to
+                // take the last "regular" one it found, usually the Chinese font: far bigger, so the first time it drew
+                // text the game stalled for about 0.6 s.)
+                var code = (Lang.Code ?? "en").ToLowerInvariant();
+                var want = code.StartsWith("zh") ? (code.Contains("hant") || code.Contains("tw") || code.Contains("hk") ? "notosanstc" : "notosanssc")
+                    : code.StartsWith("ja") ? "notosansjp" : code.StartsWith("ko") ? "notosanskr" : "notosans";
                 Font best = null;
+                int bestScore = -1;
                 foreach (var f in Resources.FindObjectsOfTypeAll<Font>())
                 {
                     if (f == null || !f.dynamic) continue;
                     var n = f.name.ToLowerInvariant();
-                    if (!n.Contains("noto")) continue;
-                    if (best == null || n.Contains("regular") || (!best.name.ToLowerInvariant().Contains("regular") && !n.Contains("bold") && !n.Contains("italic"))) best = f;
+                    if (!n.Contains("noto") || n.Contains("italic")) continue;
+                    var family = n.Split('-')[0];
+                    int score = (family == want ? 10 : family == "notosans" ? 4 : 0) + (n.Contains("regular") ? 2 : 0) - (n.Contains("bold") ? 1 : 0);
+                    if (score > bestScore) { best = f; bestScore = score; }
                 }
                 if (best != null) { ModManagerPlugin.Log.LogInfo("Mods menu font: " + best.name); return best; }
             }

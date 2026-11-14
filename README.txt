@@ -93,6 +93,12 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.13.3[/b][/size]
+[list]
+[*][b]Smoother while you play[/b]: with the Mods menu closed, the look through your installed mods comes every 30 seconds instead of every 2 (each one was a small stutter). At the main menu and with the menu open it is as quick as before.
+[*][b]No more pause when you install, remove or switch a mod[/b]: the automatic save backup is copied in the background.
+[*][b]Opening the Mods menu no longer stutters[/b]: its text is got ready while the menu is closed.
+[/list]
 [size=3][b]1.13.1[/b][/size]
 [list]
 [*][b]Install is back on Browse mods[/b]: on every card and mod page, with the website mods it needs. Cards show Update when a newer version is out. BepInEx is never installed as a requirement (it's already there).

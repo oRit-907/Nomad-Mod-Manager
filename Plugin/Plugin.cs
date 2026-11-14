@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.13.1";
+        public const string Version = "1.13.3";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -186,9 +186,25 @@ namespace NomadModManager
                     MenuButton.UpdateBadge(Catalog);
                 }
                 catch (Exception e) { Logger.LogWarning("Mod scan: " + e.Message); }
-                yield return new WaitForSecondsRealtime(Menu.IsOpen ? 1f : 2f);
+                // 1.13.3: while you play with the Mods menu closed, the scan is every 30 seconds, not every 2. It lists
+                // every file of every mod, which took 15 to 25 ms of a frame and made about 50 MB of memory a minute for
+                // the game to clean up: a small stutter every two seconds, for something that changes when you install a
+                // mod. At the main menu, with the Mods menu open and for a little after it closes, it is as often as before.
+                bool wasOpen = Menu.IsOpen;
+                float quiet = Time.realtimeSinceStartup + (wasOpen ? 1f : 2f);
+                if (!wasOpen && !AtMainMenu && Time.realtimeSinceStartup >= _scanOftenUntil) quiet = Time.realtimeSinceStartup + 30f;
+                while (Time.realtimeSinceStartup < quiet)
+                {
+                    yield return null;
+                    bool open = Menu.IsOpen, menu = AtMainMenu;
+                    if (wasOpen && !open) _scanOftenUntil = Time.realtimeSinceStartup + 20f;      // (what was chosen in the menu is carried out now)
+                    if ((open != wasOpen || menu || open) && quiet - Time.realtimeSinceStartup > 2f) quiet = Time.realtimeSinceStartup + (open ? 1f : 2f);
+                    wasOpen = open;
+                }
             }
         }
+
+        private float _scanOftenUntil;
 
         private void ReadOpenKey()
         {
