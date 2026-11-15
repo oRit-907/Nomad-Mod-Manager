@@ -142,6 +142,12 @@ namespace NomadModManager
                             var pm = patch.PatchMethod;
                             var mod = pm?.DeclaringType != null ? NetGuard.ModFor(pm.DeclaringType.Assembly) : null;
                             if (mod == null || mod.IsSelf || mod.IsLoader || HostHas(mod)) continue;
+                            // 1.13.9: a mod that says its multiplayer part is optional (NomadNetOptional: it only talks to
+                            // copies of itself and is safe with a host who doesn't have it) keeps its patches. The host's
+                            // list read here only has the mods that must match, so such a mod was never found on any host
+                            // and was always paused: guests with Nomad Dog saw no dogs, and Retro RV HUD's shared turn
+                            // signals never arrived.
+                            if (!NetCheck.AffectsCached(mod)) continue;
                             new Harmony(patch.owner).Unpatch(original, pm);
                             Held.Add(new Paused { Original = original, Patch = pm, Owner = patch.owner, Mod = mod.Name, Kind = kind, Priority = patch.priority, Before = patch.before, After = patch.after });
                             if (!PausedMods.Contains(mod.Name)) PausedMods.Add(mod.Name);
