@@ -25,6 +25,10 @@ namespace NomadModManager
 #endif
             try
             {
+                // 1.3.1: the Mods menu's data folder moves in with its plugin (BepInEx\plugins\NomadModManager\data). Done
+                // here, before any plugin loads and while nothing in the folder is in use.
+                try { var moved = Pending.Migrate(Paths.GameRootPath); if (moved != null) log.LogMessage(moved); }
+                catch (Exception e) { log.LogWarning("The Mods menu's data folder stays where it was for now: " + e.Message); }
                 if (!Pending.HasWork(Paths.GameRootPath)) return;
                 var n = Pending.ApplyAll(Paths.GameRootPath, m => log.LogInfo(m));
                 log.LogMessage($"Applied {n} queued mod change(s).");

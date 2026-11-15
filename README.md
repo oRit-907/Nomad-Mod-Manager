@@ -59,7 +59,7 @@ The menu checks a new DLL before starting it without a restart. To decide for yo
   switched-off requirements, conflicts, a newer copy, Unity code the game left out, errors) with a one-click fix.
 - **Settings** for each mod: switches, choices, numbers (with a drag bar when the mod gives a range), text and key
   rebinding. Running mods take changes right away; the rest read them from their config file at their next start.
-- **Profiles**: save which mods are on and switch sets in one go (kept in `BepInEx\NomadModManager\profiles.json`).
+- **Profiles**: save which mods are on and switch sets in one go (kept in `BepInEx\plugins\NomadModManager\data\profiles.json`).
 - **Changes** waiting for a restart, with Undo.
 - Opens from the **Mods** button on the main menu and in the pause (Esc) menu. An optional hotkey (`Hotkey` in the config) opens it anywhere.
   Works with a **controller**: d-pad/stick to move, A to press, B back, LB/RB to switch pages, right stick to scroll.
@@ -95,7 +95,7 @@ libwebp and libsharpyuv are Google's official builds (BSD 3-Clause), from the `I
 
 - **Multiplayer**: in a lobby, every player who has this menu shares their mod list on their lobby membership (an EOS member attribute, like the game's display name), and everyone's mods are compared: what you're missing (with Install), what's on another version, what they're missing. Nothing is sent over the game's connection, so players without the menu aren't affected. Share codes ("NMM:…", copied to the clipboard) compare mod lists outside a lobby.
 - **Conflict finder**: running mods that rewrite the same game method (Harmony prefixes/transpilers from two mods) are flagged on their Installed rows.
-- **Save backups**: saves (Unity's persistent data folder) are copied to `BepInEx\NomadModManager\save-backups` before the menu changes mods (at most every 5 minutes, last 10 kept), with Restore (main menu only; the current saves are backed up first).
+- **Save backups**: saves (Unity's persistent data folder) are copied to `BepInEx\plugins\NomadModManager\data\save-backups` before the menu changes mods (at most every 5 minutes, last 10 kept), with Restore (main menu only; the current saves are backed up first).
 - **Activity page**: what the menu did (`activity.log`), this session's errors and warnings from LogOutput.log, and the save backups.
 - **Settings**: a find box and Reset all.
 - **Languages**: the menu follows the game's language (config `General/Language`), using Nomad Mod Downloader's translations plus `Lang/*.json`.

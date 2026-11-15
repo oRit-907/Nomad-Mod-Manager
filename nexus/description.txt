@@ -81,7 +81,7 @@ Everything else is the same: installing, updating, switching mods on and off, se
 [*]Start the game and press [b]Mods[/b] on the main menu or in the pause menu.[/*]
 [/list]
 [spoiler]
-The menu watches the Downloads folder in your Windows user folder. If your browser saves somewhere else, put that folder in [b]DownloadsFolder[/b] in [b]BepInEx\config\akorit.nomadmodmanager.cfg[/b].
+The menu watches the Downloads folder in your Windows user folder. If your browser saves somewhere else, put that folder in [b]DownloadsFolder[/b] in [b]BepInEx\config\AkoRit\ModManager.cfg[/b].
 .zip, .7z, .rar and .dll files all install by themselves. Archives with a password can't be unpacked.[/spoiler]
 
 [spoiler]

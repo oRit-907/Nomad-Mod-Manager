@@ -528,11 +528,13 @@ namespace NomadModManager
             if ((t3 - t0) * f >= 60.0 && _slowDraws < 3)
             {
                 _slowDraws++;
-                ModManagerPlugin.Log.LogInfo($"Slow Mods menu draw ({Event.current?.type}): {(t3 - t0) * f:0} ms (styles {(t1 - t0) * f:0}, {(IsOpen ? "menu" : "lobby filter")} {(t2 - t1) * f:0}, messages {(t3 - t2) * f:0}; font {_font?.name ?? "not chosen yet"}).");
+                ModManagerPlugin.Log.LogInfo($"Slow Mods menu draw ({Event.current?.type}): {(t3 - t0) * f:0} ms (styles {(t1 - t0) * f:0}, {(IsOpen ? "menu" : "lobby filter")} {(t2 - t1) * f:0}{(IsOpen ? $" (its left side {_leftTicks * f:0})" : "")}, messages {(t3 - t2) * f:0}; font {_font?.name ?? "not chosen yet"}).");
             }
         }
 
         private int _slowDraws;
+        private long _leftTicks;
+        private int _rehearsePart;   // 0: not rehearsing; 1: the left side only; 2: the page only
 
         private void DrawScreen()
         {
@@ -542,7 +544,11 @@ namespace NomadModManager
 
             var leftX = _logoFromGame ? Mathf.Max(24 * _s, _logoRect.center.x - 180 * _s) : 60 * _s;
             var left = new Rect(leftX, 0, 360 * _s, Screen.height);
-            DrawLeft(left);
+            // (the warm-up draws the left side and the page in two frames: see Rehearse)
+            long d0 = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (_rehearsePart != 2) DrawLeft(left);
+            _leftTicks = System.Diagnostics.Stopwatch.GetTimestamp() - d0;
+            if (_rehearsePart == 1) return;
 
             var cx = left.xMax + 40 * _s;
             var content = new Rect(cx, 44 * _s, Screen.width - cx - 44 * _s, Screen.height - 88 * _s);
@@ -2543,7 +2549,11 @@ namespace NomadModManager
                 if (_warmStep == 0) { Styles(); _warmStep = 1; return; }
                 GUIStyle[] all = { _body, _bold, _small, _smallBold, _nav, _h2, _wrap, _wrapSmall };
                 int i = _warmStep - 1;
-                if (i >= all.Length) { _warmStep = -1; return; }
+                // 1.13.4: then the menu itself is drawn once where it can't be seen (the left side in one frame, the
+                // page in the next). Measuring the letters wasn't enough: the first real draw of the menu still took
+                // 554 ms on the click (16:36 log), all of it inside the drawing.
+                if (i >= all.Length + 2) { _warmStep = -1; return; }
+                if (i >= all.Length) { _warmStep++; Rehearse(i - all.Length + 1); return; }
                 _warmStep++;
                 if (all[i] == null) return;
                 if (_warmChars == null)
@@ -2565,6 +2575,34 @@ namespace NomadModManager
                 _warmStep = -1;
                 _warmScale = _s;
             }
+        }
+
+        /// <summary>Draws the closed menu once into a picture nobody sees, so the fonts, letters and shaders its first
+        /// real draw needs are made now and not on the click that opens it.</summary>
+        private void Rehearse(int part)
+        {
+            if (IsOpen) return;
+            var prev = RenderTexture.active;
+            RenderTexture rt = null;
+            int nav = _navNow.Count;
+            long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
+            {
+                rt = RenderTexture.GetTemporary(Mathf.Max(16, Screen.width), Mathf.Max(16, Screen.height), 0);
+                RenderTexture.active = rt;
+                _rehearsePart = part;
+                DrawScreen();
+            }
+            catch (Exception e) { ModManagerPlugin.Log.LogInfo("Mods menu warm-up: the practice draw stopped: " + e.Message); }
+            finally
+            {
+                _rehearsePart = 0;
+                RenderTexture.active = prev;
+                if (rt != null) RenderTexture.ReleaseTemporary(rt);
+                if (_navNow.Count > nav) _navNow.RemoveRange(nav, _navNow.Count - nav);
+            }
+            double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            ModManagerPlugin.Log.LogInfo($"Mods menu warm-up: drew {(part == 1 ? "its left side" : "its page")} once out of sight in {ms:0} ms.");
         }
 
         private void Styles()

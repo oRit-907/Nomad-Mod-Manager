@@ -135,6 +135,8 @@ namespace NomadModManager
             if (live != null && live.Keys.Count > 0)
             {
                 s.Live = true;
+                // (a mod may keep its settings under another name or in a folder of its own: the running one says where)
+                try { if (!string.IsNullOrEmpty(live.ConfigFilePath)) s.File = live.ConfigFilePath; } catch { }
                 foreach (var def in live.Keys.ToList())
                 {
                     ConfigEntryBase e;

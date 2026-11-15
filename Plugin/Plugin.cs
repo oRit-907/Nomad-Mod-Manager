@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.13.3";
+        public const string Version = "1.13.7";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -40,12 +40,44 @@ namespace NomadModManager
         /// <summary>The game's pause (Esc) menu, while it exists.</summary>
         internal EvilCore.UI.GameMenu.Panels.GameMenuRootPanel PauseMenu;
 
+        /// <summary>The settings file is BepInEx\config\AkoRit\{name}.cfg: one folder for all of AkoRit's mods (1.7.6).
+        /// BepInEx names a mod's file after its id; the plugin's own Config is pointed at the new file, so everything that
+        /// reads or shows the settings follows. A file from before (under the mod's id or one of its earlier names, in
+        /// BepInEx\config) is moved over first: the settings carry over. If any of this can't be done, the file BepInEx
+        /// would use stays in use.</summary>
+        private void UseSettingsFile(string name, params string[] earlier)
+        {
+            try
+            {
+                var field = typeof(BaseUnityPlugin).GetField("<Config>k__BackingField", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field == null) { Log.LogInfo("Settings file: this BepInEx keeps it under the mod's id, so it stays " + Guid + ".cfg."); return; }
+                string dir = System.IO.Path.Combine(Paths.ConfigPath, "AkoRit");
+                System.IO.Directory.CreateDirectory(dir);
+                string path = System.IO.Path.Combine(dir, name + ".cfg");
+                string moved = null;
+                if (!System.IO.File.Exists(path))
+                    foreach (string was in earlier)
+                    {
+                        string old = System.IO.Path.Combine(Paths.ConfigPath, was + ".cfg");
+                        if (!System.IO.File.Exists(old)) continue;
+                        try { System.IO.File.Move(old, path); }
+                        catch { System.IO.File.Copy(old, path, false); }
+                        moved = was;
+                        break;
+                    }
+                field.SetValue(this, new BepInEx.Configuration.ConfigFile(path, true, Info.Metadata));
+                if (moved != null) Log.LogInfo($"Settings file: {moved}.cfg is now AkoRit\\{name}.cfg (moved, your settings are in it).");
+            }
+            catch (Exception e) { Log.LogInfo("Settings file: stays where BepInEx keeps it (" + e.Message + ")."); }
+        }
+
         private void Awake()
         {
             I = this;
             Log = Logger;
             // 1.13.1: the menu draws with GUI (never GUILayout), so Unity's extra layout pass every frame is skipped.
             useGUILayout = false;
+            UseSettingsFile("ModManager", "ModManager", Guid);
             AutoStart = Config.Bind("General", "StartNewModsAutomatically", true,
                 "Start newly installed mods right away when they can run without a restart (only at the main menu).");
             Scale = Config.Bind("General", "MenuScale", 1f, "Size of the Mods menu (1 = 1080p size).");
@@ -74,6 +106,10 @@ namespace NomadModManager
             catch (Exception e) { Logger.LogWarning("Couldn't hook the lobby list's rows (mods filters are off): " + e.Message); }
             LobbyMods.Left += () => { try { HostSettings.Restore(); } catch { } };
 
+            // 1.13.7: the data folder is BepInEx\plugins\NomadModManager\data. The patcher moves it at game start; this is
+            // for a game still running an older patcher.
+            try { var moved = Pending.Migrate(Paths.GameRootPath); if (moved != null) Log.LogMessage(moved); }
+            catch (Exception e) { Log.LogWarning("The data folder stays where it was for now: " + e.Message); }
             try { Directory.CreateDirectory(Pending.Dir(Paths.GameRootPath)); } catch { }
             PatcherNames.Tidy();
             if (!PatcherNames.ModFilesInstalled)

@@ -386,7 +386,21 @@ namespace NomadModManager
         private static string _cached;
         private static float _nextSearch;
 
-        private static string RegFile => Path.Combine(Pending.Dir(Paths.GameRootPath), "downloader.txt");
+        private static string RegFile
+        {
+            get
+            {
+                var file = Path.Combine(Pending.Dir(Paths.GameRootPath), "downloader.txt");
+                // (Nomad Mod Downloader says where it is in the data folder's old place: taken over when it has)
+                try
+                {
+                    var old = Path.Combine(Pending.LegacyDir(Paths.GameRootPath), "downloader.txt");
+                    if (File.Exists(old)) { Directory.CreateDirectory(Path.GetDirectoryName(file)); if (File.Exists(file)) File.Delete(file); File.Move(old, file); }
+                }
+                catch { }
+                return file;
+            }
+        }
 
         /// <summary>
         /// Where the downloader is: the path it registered, or a look through the usual places
@@ -447,6 +461,8 @@ namespace NomadModManager
             try
             {
                 var f = Path.Combine(Pending.Dir(Paths.GameRootPath), "downloader-version.txt");
+                var was = Path.Combine(Pending.LegacyDir(Paths.GameRootPath), "downloader-version.txt");   // (where the app still writes it)
+                if (File.Exists(was)) f = was;
                 if (exe.IndexOf("WindowsApps", StringComparison.OrdinalIgnoreCase) >= 0 && File.Exists(f)) return new Version(File.ReadAllText(f).Trim());
             }
             catch { }

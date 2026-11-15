@@ -103,7 +103,7 @@ namespace NomadModManager
         {
             try
             {
-                foreach (var f in Directory.GetFiles(Paths.PluginPath, "*.dll", SearchOption.AllDirectories))
+                foreach (var f in Pending.FilesOutsideData(Paths.GameRootPath, Paths.PluginPath, "*.dll"))
                     _startupDlls.Add(Path.GetFullPath(f));
             }
             catch { }
@@ -837,7 +837,8 @@ namespace NomadModManager
 
         private static List<string> SafeFiles(string dir)
         {
-            try { return Directory.GetFiles(dir, "*", SearchOption.AllDirectories).Select(Path.GetFullPath).ToList(); }
+            // (not the Mods menu's own data folder: its browser's DLLs and the save backups aren't part of any mod)
+            try { return Pending.FilesOutsideData(Paths.GameRootPath, dir, "*").Select(Path.GetFullPath).ToList(); }
             catch { return new List<string>(); }
         }
 

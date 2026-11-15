@@ -521,7 +521,7 @@ namespace NomadModManager
                     var name = new AssemblyName(e.Name).Name;
                     var loaded = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => SafeName(a) == name);
                     if (loaded != null) return loaded;
-                    var file = Directory.GetFiles(Paths.PluginPath, name + ".dll", SearchOption.AllDirectories).FirstOrDefault();
+                    var file = Pending.FilesOutsideData(Paths.GameRootPath, Paths.PluginPath, name + ".dll").FirstOrDefault();
                     return file != null ? Assembly.LoadFrom(file) : null;
                 }
                 catch { return null; }
