@@ -95,6 +95,11 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.13.9[/b][/size]
+[list]
+[*][b]Fixed for players who join a game[/b]: Safe join no longer pauses mods whose multiplayer part is optional. Guests with Nomad Dog now see the host's dogs, and Retro RV HUD's shared turn signals arrive.
+[*][b]The browser closes by itself[/b] once the mods you pressed Install on are installed. It stays open when you opened Nexus to look around, and when an install fails. Setting: CloseBrowserWhenInstalled.
+[/list]
 [size=3][b]1.13.8[/b][/size]
 [list]
 [*][b]No pause the first time you open the menu[/b]: it is drawn once out of sight after the game starts.
