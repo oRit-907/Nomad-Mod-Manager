@@ -26,7 +26,7 @@ It builds `Plugin` (Nexus edition), `Patcher` and `BepInEx6Compat`, and packs `n
 | `BepInEx/patchers/NomadModManager.ModFiles.dll` | `Patcher` |
 | `BepInEx/plugins/BepInEx6Compat/BepInEx6Compat.dll` | `BepInEx6Compat` (by AkoRit) |
 | `BepInEx/compat/BepInEx6/*.dll` | BepInEx 6.0.0-be.697's runtime, unchanged (LGPL-2.1; SemanticVersioning and AssetRipper.Primitives MIT), in `lib/bep6` |
-| `BepInEx/NomadModManager/native/libwebp.dll`, `libsharpyuv.dll` | Google's official builds (BSD), from the `Imazen.WebP.NativeRuntime.win-x64` 1.6.1 package, in `lib/native` |
+| `BepInEx/plugins/NomadModManager/data/native/libwebp.dll`, `libsharpyuv.dll` | Google's official builds (BSD), from the `Imazen.WebP.NativeRuntime.win-x64` 1.6.1 package, in `lib/native` |
 
 ## Files here
 

@@ -4,7 +4,8 @@
 Install, update, switch on and off and set up your mods without leaving the game, and without restarting it.
 A [b]Mods[/b] button on the main menu and the pause (Esc) menu, made for mouse, keyboard [i]and[/i] controller.
 
-You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]Nomad Drive Mods[/url].[/center]
+You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]Nomad Drive Mods[/url].
+If you want to see upcoming features early, join the [url=https://discord.gg/nomaddrive]Nomad Drive Discord[/url].[/center]
 
 [line]
 
@@ -17,7 +18,6 @@ You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]N
 [*][b]Mod pages[/b] with the full description, every file and its changelog, what it needs, and an [b]Images[/b] tab with every picture full size.[/*]
 [*][b]Updates[/b]: the menu checks Nexus for newer versions of your mods (and of the Mods menu itself) and shows how many are waiting on the Mods buttons. Only a higher version counts: if yours is the same or newer, you're not asked. Updating works like installing: you download the new file, the menu swaps it in and removes the old copy.[/*]
 [/list]
-
 [size=5][b][color=#fac16e]🔧 Keep them working[/color][/b][/size]
 [list]
 [*][b]Installed[/b]: every mod grouped by author, with search. Switch mods on and off, remove them, or update them in one go.[/*]
@@ -30,7 +30,6 @@ You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]N
 [*][b]Report a bug[/b] on any Nexus mod, straight to its Bugs tab.[/*]
 [*][b]BepInEx is protected[/b]: its own parts can't be switched off or removed from the menu, so one click can't break every mod.[/*]
 [/list]
-
 [size=5][b][color=#fac16e]🚐 Multiplayer that doesn't drop you[/color][/b][/size]
 [list]
 [*][b]Safe join[/b]: join games whose host has no mods (or not yours) and stay in. Your mods' multiplayer parts pause while you're in their game and come back when you leave.[/*]
@@ -40,7 +39,6 @@ You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]N
 [*][b]Share your mods[/b]: copy your mod list as a code for your friends; they paste it in their Mods menu to compare and get the same mods.[/*]
 [*][b]Why I was dropped[/b]: when a game drops you, the menu says why in plain words and which mods are likely involved.[/*]
 [/list]
-
 [size=5][b][color=#fac16e]🌍 Everywhere[/color][/b][/size]
 [list]
 [*][b]In your language[/b]: follows the game's language (English, German, Spanish, French, Italian, Japanese, Korean, Polish, Portuguese, Russian, Turkish and Chinese).[/*]
@@ -48,7 +46,6 @@ You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]N
 [*][b]Clean exit[/b]: makes sure the game closes when you quit, even if another mod keeps it running.[/*]
 [*][b]Light on your game[/b]: your Downloads folder is watched in the background, and the menu does almost nothing while it's closed.[/*]
 [/list]
-
 [line]
 
 [size=5][b][color=#fac16e]🌐 What it connects to[/color][/b][/size]
@@ -56,15 +53,13 @@ You can also find full version on [url=https://www.nomaddrivemods.online/mod/1]N
 [*]Only [b]Nexus Mods[/b], to list Nomad Drive's mods, show their pages and pictures, and check your installed mods for updates. Nothing about you is sent.[/*]
 [*]It doesn't update itself and doesn't download files or programs: you download everything from Nexus in your own browser. When a new version of the Mods menu is posted here, it tells you.[/*]
 [/list]
-
 [size=5][b][color=#fac16e]✂ Why this edition is smaller[/color][/b][/size]
 Files on Nexus Mods have to follow Nexus's rules: a mod hosted here can't download files or programs by itself, can't install mods from other websites, can't update itself from somewhere else, and can't skip Nexus's own download page. The full version of the Mods menu does all of those, so this edition leaves them out:
 [list]
 [*][b]Mods from Nomad Drive Mods[/b] (Browse mods, mod packs, Subscribe, accounts): they come from another website, so this edition shows Nexus mods only.[/*]
 [*][b]The in-game browser[/b]: the full version downloads its own browser (Chromium) to install Nexus mods inside the game. Here you download in your own web browser instead, and the menu picks the file up from your Downloads folder.[/*]
 [*][b]Self-updates[/b]: the full version updates itself. This one doesn't: new versions are posted on this page, and the menu tells you when one is out.[/*]
-[/list]
-Everything else is the same: installing, updating, switching mods on and off, settings, profiles, save backups, multiplayer and controller support. If you want the extras, the full version is on [url=https://www.nomaddrivemods.online/mod/1]Nomad Drive Mods[/url].
+[/list]Everything else is the same: installing, updating, switching mods on and off, settings, profiles, save backups, multiplayer and controller support. If you want the extras, the full version is on [url=https://www.nomaddrivemods.online/mod/1]Nomad Drive Mods[/url].
 [b]Switching between the two keeps everything[/b]: your mods, profiles, settings and save backups are shared, so you can move from one edition to the other at any time.
 
 [size=5][b][color=#fac16e]📦 Requirements[/color][/b][/size]
@@ -73,30 +68,27 @@ Everything else is the same: installing, updating, switching mods on and off, se
 [*][b]BepInEx 6 Compatibility is included[/b], so mods built for BepInEx 6 load on BepInEx 5 too (it runs BepInEx 6's own loader beside BepInEx 5; BepInEx 6 patchers don't run).[/*]
 [*]Windows, and a web browser to download from Nexus.[/*]
 [/list]
-
 [size=5][b][color=#fac16e]⬇ Install[/color][/b][/size]
 [list=1]
 [*]Install [url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url] if you haven't yet, and start the game once.[/*]
 [*]Unzip this mod into your Nomad Drive folder (the one with Nomad Drive.exe; in Steam: right-click Nomad Drive › Manage › Browse local files) and let it merge.[/*]
 [*]Start the game and press [b]Mods[/b] on the main menu or in the pause menu.[/*]
-[/list]
-[spoiler]
+[/list][spoiler]
 The menu watches the Downloads folder in your Windows user folder. If your browser saves somewhere else, put that folder in [b]DownloadsFolder[/b] in [b]BepInEx\config\AkoRit\ModManager.cfg[/b].
 .zip, .7z, .rar and .dll files all install by themselves. Archives with a password can't be unpacked.[/spoiler]
 
 [spoiler]
 Your mod can switch on, off and update instantly anywhere, even mid-drive, if it sets itself up when it starts and cleans up in [b]OnDestroy[/b] (unpatch Harmony, destroy what it made). Say so with one line:
-[code][assembly: System.Reflection.AssemblyMetadata("NomadHotLoad", "true")][/code]
-Mods without it are reloaded at the main menu, or when the player presses Reload.
+[code][assembly: System.Reflection.AssemblyMetadata("NomadHotLoad", "true")][/code]Mods without it are reloaded at the main menu, or when the player presses Reload.
 
 A mod whose multiplayer features are optional (players without it can still join) can say so too:
-[code][assembly: System.Reflection.AssemblyMetadata("NomadNetOptional", "true")][/code]
-[/spoiler]
+[code][assembly: System.Reflection.AssemblyMetadata("NomadNetOptional", "true")][/code][/spoiler]
 
 [line]
 
 [center][size=2]Source code: [url=https://github.com/oRit-907/Nomad-Mod-Manager]github.com/oRit-907/Nomad-Mod-Manager[/url] (this is the Nexus edition, built with [i]-p:NexusEdition=true[/i])
 Unpacks .7z and .rar with SharpCompress by Adam Hathcock (MIT). BepInEx 6 Compatibility includes BepInEx 6.0.0-be.697's runtime (LGPL-2.1, unchanged) with SemanticVersioning and AssetRipper.Primitives (MIT).
 A fan-made tool, not made by or affiliated with Indie Devil (the makers of Nomad Drive) or Nexus Mods.[/size][/center]
+[center][/center]
 [center][/center]
 [center][/center]

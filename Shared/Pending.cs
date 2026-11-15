@@ -104,6 +104,7 @@ namespace NomadModManager
                         n++;
                     }
                     else if (!File.Exists(target)) { File.Move(f, target); n++; }
+                    else if (new FileInfo(target).Length == new FileInfo(f).Length) File.Delete(f);   // (already here: the old copy goes)
                 }
                 catch { }
             }
@@ -201,6 +202,14 @@ namespace NomadModManager
                 if (!Directory.Exists(d)) continue;
                 result.AddRange(FilesOutsideData(gameRoot, d, "*" + NewSuffix));
             }
+            // (the two picture-decoding libraries the Mods menu ships are in its data folder: the one part of it an
+            // update writes to)
+            try
+            {
+                var native = Path.Combine(Dir(gameRoot), "native");
+                if (Directory.Exists(native)) result.AddRange(Directory.GetFiles(native, "*" + NewSuffix));
+            }
+            catch { }
             return result;
         }
 

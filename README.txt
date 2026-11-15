@@ -2,7 +2,9 @@
 [size=4]The Mods menu, built into Nomad Drive[/size]
 
 [i]Find, install, update and manage mods without leaving the game, and without restarting it.
-A [b]Mods[/b] button on the main menu and the pause menu, made for mouse, keyboard and controller.[/i][/center]
+A [b]Mods[/b] button on the main menu and the pause menu, made for mouse, keyboard and controller.[/i]
+
+If you want to see upcoming features early, join the [url=https://discord.gg/nomaddrive]Nomad Drive Discord[/url].[/center]
 
 [line]
 
@@ -93,6 +95,12 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.13.8[/b][/size]
+[list]
+[*][b]No pause the first time you open the menu[/b]: it is drawn once out of sight after the game starts.
+[*][b]The settings file is now BepInEx\config\AkoRit\ModManager.cfg[/b]: it is moved there with your settings in it.
+[*][b]The menu's own files (save backups and the rest) are now in BepInEx\plugins\NomadModManager\data[/b]: everything in BepInEx\NomadModManager is moved there the first time this version starts.
+[/list]
 [size=3][b]1.13.3[/b][/size]
 [list]
 [*][b]Smoother while you play[/b]: with the Mods menu closed, the look through your installed mods comes every 30 seconds instead of every 2 (each one was a small stutter). At the main menu and with the menu open it is as quick as before.

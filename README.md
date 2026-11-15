@@ -41,7 +41,7 @@ Unzip `NomadModManager-<version>-BepInEx5.zip` into the Nomad Drive folder (it c
 |---|---|
 | `NomadModManager.dll` | `BepInEx\plugins\NomadModManager\` |
 | `NomadModManager.ModFiles.dll` | `BepInEx\patchers\` (applies queued changes at launch) |
-| `libwebp.dll`, `libsharpyuv.dll` | `BepInEx\NomadModManager\native\` (decodes mod pictures, which are often WebP) |
+| `libwebp.dll`, `libsharpyuv.dll` | `BepInEx\plugins\NomadModManager\data\native\` (decodes mod pictures, which are often WebP) |
 
 ## Mod authors
 
@@ -87,7 +87,7 @@ dotnet build Plugin -c Release -o out/Plugin
 ```
 
 The zip holds `BepInEx/plugins/NomadModManager/NomadModManager.dll`, `BepInEx/patchers/NomadModManager.ModFiles.dll`
-and `BepInEx/NomadModManager/native/` (libwebp) from the build.
+and `BepInEx/plugins/NomadModManager/data/native/` (libwebp) from the build.
 
 libwebp and libsharpyuv are Google's official builds (BSD 3-Clause), from the `Imazen.WebP.NativeRuntime.win-x64` 1.6.1 package.
 

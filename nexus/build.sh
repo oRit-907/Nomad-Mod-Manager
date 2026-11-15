@@ -15,7 +15,7 @@ dotnet build Patcher -c Release
 dotnet build BepInEx6Compat -c Release
 
 b="$pkg/BepInEx"
-mkdir -p "$b/plugins/NomadModManager" "$b/patchers" "$b/plugins/BepInEx6Compat" "$b/compat/BepInEx6" "$b/NomadModManager/native"
+mkdir -p "$b/plugins/NomadModManager" "$b/patchers" "$b/plugins/BepInEx6Compat" "$b/compat/BepInEx6" "$b/plugins/NomadModManager/data/native"
 cp Plugin/bin/Release/NomadModManager.dll "$b/plugins/NomadModManager/"
 cp lib/NomadModManager.SharpCompress.dll lib/NomadModManager.SharpCompress-LICENSE.txt "$b/plugins/NomadModManager/"
 cp nexus/package/THIRD-PARTY-NOTICES.txt "$b/plugins/NomadModManager/"
@@ -25,8 +25,8 @@ for f in BepInEx.Core BepInEx.Unity.Mono BepInEx.Unity.Common BepInEx.Preloader.
   cp "lib/bep6/$f.dll" "$b/compat/BepInEx6/"
 done
 cp nexus/package/compat-BepInEx6-README.txt "$b/compat/BepInEx6/README.txt"
-cp lib/native/libwebp.dll lib/native/libsharpyuv.dll "$b/NomadModManager/native/"
-cp nexus/package/libwebp-licence.txt "$b/NomadModManager/native/"
+cp lib/native/libwebp.dll lib/native/libsharpyuv.dll "$b/plugins/NomadModManager/data/native/"
+cp nexus/package/libwebp-licence.txt "$b/plugins/NomadModManager/data/native/"
 
 zip="$out/NomadModManager-$version-Nexus-BepInEx5.zip"
 rm -f "$zip"
