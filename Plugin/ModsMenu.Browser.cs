@@ -31,6 +31,7 @@ namespace NomadModManager
         private bool _browserPrompt;          // showing "press the download button" (worded for the player's Nexus account)
         private bool _browserAutoUpdate;      // fetching a newer browser app by itself (Chromium already there)
         private float _browserOpenedAt;
+        private int _browserCloseTicket;      // changes whenever the browser is given something new to do, so a planned close is called off
 
         // The right-click menu (Chromium can't draw its own off-screen): where, and what it offers.
         private bool _ctxOpen, _ctxEditable, _ctxSelection;
@@ -62,6 +63,7 @@ namespace NomadModManager
             if (items.Count == 0) return;
             SaveBackups.Create("before installing " + what, true);
             Activity.Add($"Installing {what} from Nexus in the Mods menu's browser");
+            _browserCloseTicket++;
             _browserQueue.Clear();
             _browserQueue.AddRange(items);
             _browserDone = 0; _browserTotal = items.Count;
@@ -75,6 +77,7 @@ namespace NomadModManager
         /// <summary>Nexus's Nomad Drive mods in the menu's browser, to look around (a file downloaded there is installed too).</summary>
         private void OpenNexusHere()
         {
+            _browserCloseTicket++;
             _browserQueue.Clear(); _browserNow = (0, 0); _browserDone = 0; _browserTotal = 0;
             _browserOpen = true; _browserError = ""; _browserOpenedAt = Time.unscaledTime; ResetBrowserOverlays();
             _browserStatus = "Open a mod, go to its Files tab and press the download button: the Mods menu installs it.";
@@ -95,6 +98,7 @@ namespace NomadModManager
         private void NextInBrowser()
         {
             if (_browserQueue.Count == 0) return;
+            _browserCloseTicket++;
             _browserNow = _browserQueue[0];
             _browserQueue.RemoveAt(0);
             if (_browserNow.FileId > 0) { OpenInBrowser(); return; }
@@ -170,6 +174,7 @@ namespace NomadModManager
 
         private void CloseBrowser()
         {
+            _browserCloseTicket++;
             _browserOpen = false;
             ResetBrowserOverlays();
             _browserQueue.Clear();
@@ -359,7 +364,7 @@ namespace NomadModManager
 
         private void BrowserEvent(string e)
         {
-            if (e.StartsWith("dl-start ")) { _browserPrompt = false; _browserStatus = "Downloading " + e.Substring(9) + "…"; _browserStatusGood = true; }
+            if (e.StartsWith("dl-start ")) { _browserCloseTicket++; _browserPrompt = false; _browserStatus = "Downloading " + e.Substring(9) + "…"; _browserStatusGood = true; }
             else if (e.StartsWith("dl-progress "))
             {
                 var p = e.Split(' ');
@@ -437,9 +442,27 @@ namespace NomadModManager
                 var msg = $"{name} v{version.TrimStart('v', 'V')} is installed" + (staged ? " — it replaces files in use, so it switches over when you restart." : ".");
                 Toast(msg, true);
                 if (_browserQueue.Count > 0) { _browserStatus = msg + " Next one…"; NextInBrowser(); }
+                else if (_browserTotal > 0 && (_host.BrowserCloseWhenDone?.Value ?? true))
+                {
+                    // Everything the player pressed Install on is in: the browser closes by itself (the message stays as a toast).
+                    _browserStatus = msg + (_browserTotal > 1 ? $" All {_browserDone} done." : "") + " Closing the browser…";
+                    _host.StartCoroutine(CloseBrowserSoon(++_browserCloseTicket));
+                }
                 else _browserStatus = msg + (_browserTotal > 1 ? $" All {_browserDone} done. Close the browser when you're ready." : " Close the browser when you're ready.");
             }
             finally { _browserInstalling = false; }
+        }
+
+        /// <summary>
+        /// Closes the browser a moment after the last install, so its last message can be read. Called off if the player
+        /// closed it, opened something else in it or started another download meanwhile.
+        /// </summary>
+        private IEnumerator CloseBrowserSoon(int ticket)
+        {
+            var until = Time.unscaledTime + 1.5f;
+            while (Time.unscaledTime < until) yield return null;
+            if (ticket != _browserCloseTicket || !_browserOpen || _browserInstalling || _browserQueue.Count > 0) yield break;
+            CloseBrowser();
         }
 
         // ------------------------------------------------------------------ mouse and keyboard → the page

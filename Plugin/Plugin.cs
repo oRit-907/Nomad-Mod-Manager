@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.13.8";
+        public const string Version = "1.13.9";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -140,6 +140,8 @@ namespace NomadModManager
 
             BrowserAutoGet = Config.Bind("Nexus", "DownloadBrowserByItself", true,
                 "Get the Mods menu's browser for Nexus Mods by itself in the background (a one-time download, about 170 MB, then small updates), so Install is ready right away. Off: it's downloaded the first time you press Install.");
+            BrowserCloseWhenDone = Config.Bind("Nexus", "CloseBrowserWhenInstalled", true,
+                "Close the Mods menu's browser by itself once the mods you pressed Install on are installed. Off: it stays open until you press Close. When you open Nexus just to look around, it always stays open.");
             StartCoroutine(Poll());
             StartCoroutine(PrepareBrowser());
 #endif
@@ -150,6 +152,7 @@ namespace NomadModManager
         internal static ConfigEntry<string> NexusClientId;
         internal ConfigEntry<string> DownloadsFolder;
         internal ConfigEntry<bool> BrowserAutoGet;
+        internal ConfigEntry<bool> BrowserCloseWhenDone;
 
         /// <summary>
         /// Gets (or updates) the in-game browser in the background a little after the game starts, so Nexus installs
