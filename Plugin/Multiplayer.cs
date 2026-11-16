@@ -488,6 +488,7 @@ namespace NomadModManager
     {
         public static DropReport Last;
         private static bool _hooked, _connected, _remoteBye, _lost;
+        private static float _nextPlayersCopy;
         private static float _connectedAt;
         private static int _syncErrors;
         private static readonly List<string> Lines = new List<string>();
@@ -516,7 +517,8 @@ namespace NomadModManager
                 if (now)
                 {
                     if (LobbyMods.Host != null) _hostInfo = LobbyMods.Host;
-                    if (LobbyMods.Players.Count > 0) _players = LobbyMods.Players.ToList();
+                    // (1.13.10: copied every two seconds, not every frame)
+                    if (LobbyMods.Players.Count > 0 && Time.realtimeSinceStartup >= _nextPlayersCopy) { _players = LobbyMods.Players.ToList(); _nextPlayersCopy = Time.realtimeSinceStartup + 2f; }
                 }
                 if (now && !_connected)
                 {

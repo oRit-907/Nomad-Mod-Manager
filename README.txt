@@ -95,6 +95,10 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.13.10[/b][/size]
+[list]
+[*][b]Smoother multiplayer[/b]: while you were in a lobby the menu worked out the mod list it shares again on every frame, about 50 MB of memory a minute for the game to clean up (half of everything the game and all mods made in a multiplayer session, so the memory cleanup paused the game about twice as often). It is now worked out every 5 seconds.
+[/list]
 [size=3][b]1.13.9[/b][/size]
 [list]
 [*][b]Fixed for players who join a game[/b]: Safe join no longer pauses mods whose multiplayer part is optional. Guests with Nomad Dog now see the host's dogs, and Retro RV HUD's shared turn signals arrive.

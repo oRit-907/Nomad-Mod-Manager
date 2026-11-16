@@ -193,6 +193,9 @@ namespace NomadModManager
         private static string _lobby, _sharedFor, _sharedText, _shareBusy;
         private static int _sharedChunks, _shareTries;
         private static List<SharedMod> _mine = new List<SharedMod>();
+        private static string _shareText;
+        private static List<SharedMod> _shareTextOf;
+        private static bool _shareTextHost;
         private static readonly HashSet<string> Told = new HashSet<string>();
         private static bool _disabled;
 
@@ -234,8 +237,17 @@ namespace NomadModManager
                 // Share mine, but only once the game has finished its own lobby setup: it updates the lobby itself
                 // right after creating or joining (your name, the host's address and region), and a second update
                 // racing those can make EOS drop the game's one, which breaks joining.
-                var text = ModList.Encode(Mine(cat), Chunk * MaxChunks);
-                if (IsHost) text += "\n" + LobbyInfo.Build(Mine(cat), cat);
+                // 1.13.10: the text to share is worked out when my list is (every 5 seconds), not every frame. It was built
+                // again on each frame spent in a lobby: about 50 MB of memory a minute for the game to clean up, half of
+                // everything the game and all mods made together in a multiplayer session.
+                var mine = Mine(cat);
+                if (_shareText == null || !ReferenceEquals(mine, _shareTextOf) || _shareTextHost != IsHost)
+                {
+                    var t = ModList.Encode(mine, Chunk * MaxChunks);
+                    if (IsHost) t += "\n" + LobbyInfo.Build(mine, cat);
+                    _shareText = t; _shareTextOf = mine; _shareTextHost = IsHost;
+                }
+                var text = _shareText;
                 if (_shareBusy != null || (_sharedFor == lobbyId && _sharedText == text)) return;
                 if (Time.realtimeSinceStartup < _nextShare || !GameSetupDone(lobbyId)) return;
                 if (_shareTries >= 3) return;   // EOS keeps refusing: leave the lobby alone, the share code still works
