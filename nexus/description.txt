@@ -64,14 +64,14 @@ Files on Nexus Mods have to follow Nexus's rules: a mod hosted here can't downlo
 
 [size=5][b][color=#fac16e]📦 Requirements[/color][/b][/size]
 [list]
-[*][b]BepInEx 5[/b]: [url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url].[/*]
-[*][b]BepInEx 6 Compatibility is included[/b], so mods built for BepInEx 6 load on BepInEx 5 too (it runs BepInEx 6's own loader beside BepInEx 5; BepInEx 6 patchers don't run).[/*]
+[*][b]BepInEx 5[/b] ([url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url]) [b]or Ignite Loader[/b] ([url=https://www.nexusmods.com/nomaddrive/mods/106]Ignite Loader[/url]): either one. The same download runs on both (new in 1.16.0).[/*]
+[*][b]BepInEx 6 Compatibility is included[/b], so mods built for BepInEx 6 load on BepInEx 5 too (it runs BepInEx 6's own loader beside BepInEx 5; BepInEx 6 patchers don't run). On Ignite Loader it stands aside: Ignite Loader loads BepInEx 6 mods itself.[/*]
 [*]Windows, and a web browser to download from Nexus.[/*]
 [/list]
 [size=5][b][color=#fac16e]⬇ Install[/color][/b][/size]
 [list=1]
-[*]Install [url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url] if you haven't yet, and start the game once.[/*]
-[*]Unzip this mod into your Nomad Drive folder (the one with Nomad Drive.exe; in Steam: right-click Nomad Drive › Manage › Browse local files) and let it merge.[/*]
+[*]Install [url=https://www.nexusmods.com/nomaddrive/mods/7]BepInEx for Nomad Drive[/url] or [url=https://www.nexusmods.com/nomaddrive/mods/106]Ignite Loader[/url] if you haven't yet, and start the game once.[/*]
+[*]Unzip this mod into your Nomad Drive folder (the one with Nomad Drive.exe; in Steam: right-click Nomad Drive › Manage › Browse local files) and let it merge. (On Ignite Loader too: it also loads mods from the BepInEx folder, and the menu then works in IgniteLoader\plugins.)[/*]
 [*]Start the game and press [b]Mods[/b] on the main menu or in the pause menu.[/*]
 [/list][spoiler]
 The menu watches the Downloads folder in your Windows user folder. If your browser saves somewhere else, put that folder in [b]DownloadsFolder[/b] in [b]BepInEx\config\AkoRit\ModManager.cfg[/b].
