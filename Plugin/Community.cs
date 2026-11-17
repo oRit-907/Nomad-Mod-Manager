@@ -227,7 +227,7 @@ namespace NomadModManager
                 return (JObject.Parse(File.ReadAllText(ManifestPath))["Mods"] as JArray ?? new JArray()).Select(t => new SiteInstall
                 {
                     Id = (int?)t["Id"] ?? 0, VersionId = (int?)t["VersionId"] ?? 0, Name = (string)t["Name"] ?? "", Author = (string)t["Author"] ?? "",
-                    Version = (string)t["Version"] ?? "", Files = (t["Files"] as JArray ?? new JArray()).Select(f => (string)f).Where(f => !string.IsNullOrEmpty(f)).ToList(),
+                    Version = (string)t["Version"] ?? "", Files = (t["Files"] as JArray ?? new JArray()).Select(f => (string)f).Where(f => !string.IsNullOrEmpty(f)).Select(LoaderPaths.Here).ToList(),
                     Sub = (bool?)t["Sub"] ?? false,
                 }).Where(m => m.Id > 0).ToList();
             }
@@ -438,7 +438,7 @@ namespace NomadModManager
                 catch { }
             }
             // Empty folders the mod leaves behind in BepInEx\plugins
-            foreach (var dir in mod.Files.Select(f => Pending.Norm(f)).Where(f => f.StartsWith("BepInEx/plugins/", StringComparison.OrdinalIgnoreCase) && f.Count(c => c == '/') >= 3)
+            foreach (var dir in mod.Files.Select(f => LoaderPaths.Map(f)).Where(f => f.StartsWith(LoaderPaths.Plugins + "/", StringComparison.OrdinalIgnoreCase) && f.Count(c => c == '/') >= 3)
                          .Select(f => string.Join("/", f.Split('/').Take(3).ToArray())).Distinct())
             {
                 try { var full = SafeJoin(root, dir); if (Directory.Exists(full) && !Directory.GetFileSystemEntries(full, "*", SearchOption.AllDirectories).Any(e => File.Exists(e))) Directory.Delete(full, true); } catch { }
@@ -480,7 +480,7 @@ namespace NomadModManager
             if (ext != ".zip" && ext != ".dll" && !Unpack.Handles(ext)) throw new InvalidOperationException("That file can't be installed here (only .zip, .7z, .rar and .dll).");
             var list = NexusInstalled();
             var previous = list.OfType<JObject>().FirstOrDefault(m => ((int?)m["ModId"] ?? 0) == modId);
-            var prevFiles = (previous?["Files"] as JArray)?.Select(f => (string)f).Where(f => !string.IsNullOrEmpty(f)).ToList();
+            var prevFiles = (previous?["Files"] as JArray)?.Select(f => (string)f).Where(f => !string.IsNullOrEmpty(f)).Select(LoaderPaths.Here).ToList();
             var staged = Place(path, ext, modName, fileName, prevFiles, out var now);
             if (previous != null) previous.Remove();
             list.Add(new JObject
@@ -504,17 +504,17 @@ namespace NomadModManager
         private static bool Place(string path, string ext, string modName, string dllName, List<string> previousFiles, out List<string> files)
         {
             var root = Paths.GameRootPath;
-            var folder = "BepInEx/plugins/" + SafeName(modName);
+            var folder = LoaderPaths.Plugins + "/" + SafeName(modName);
             var written = new List<string>();
             var staged = false;
 
             void Put(string rel, Action<Stream> write)
             {
-                rel = Pending.Norm(rel);
+                rel = LoaderPaths.Map(rel);       // (the running loader's folder: BepInEx\, or IgniteLoader\ on Ignite Loader)
                 var full = SafeJoin(root, rel);
                 Directory.CreateDirectory(Path.GetDirectoryName(full));
                 var exists = File.Exists(full) || File.Exists(full + Pending.OffSuffix);
-                var inBep = rel.StartsWith("BepInEx/", StringComparison.OrdinalIgnoreCase);
+                var inBep = LoaderPaths.InLoader(rel);
                 // A DLL that's already there is loaded by the game: the new one waits next to it and is swapped in at launch.
                 var target = exists && inBep && rel.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? full + Pending.NewSuffix : full;
                 try { using (var fs = File.Create(target)) write(fs); }
@@ -579,15 +579,20 @@ namespace NomadModManager
         private static readonly HashSet<string> BepSubdirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "plugins", "patchers", "config", "monomod" };
         private static readonly HashSet<string> LoaderRootFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { "winhttp.dll", "version.dll", "doorstop_config.ini", ".doorstop_version", "changelog.txt", "run_bepinex.sh", "libdoorstop.so", "libdoorstop.dylib" };
-        private static readonly string[] LoaderFolders = { "BepInEx/core/", "BepInEx/cache/", "BepInEx/unity-libs/", "BepInEx/interop/", "dotnet/", "doorstop_libs/" };
+        // (1.16.0: Ignite Loader's own folders and files too. A mod's zip never replaces either loader.)
+        private static readonly string[] LoaderFolders = { "BepInEx/core/", "BepInEx/cache/", "BepInEx/unity-libs/", "BepInEx/interop/", "dotnet/", "doorstop_libs/",
+            "IgniteLoader/loader/", "IgniteLoader/runtime/", "IgniteLoader/cache/", "IgniteLoader/licenses/" };
 
         private static bool IsLoaderFile(string rel) =>
             LoaderRootFiles.Contains(rel) || LoaderFolders.Any(f => rel.StartsWith(f, StringComparison.OrdinalIgnoreCase))
-            || rel.Equals("BepInEx/config/BepInEx.cfg", StringComparison.OrdinalIgnoreCase) || rel.Equals("BepInEx/LogOutput.log", StringComparison.OrdinalIgnoreCase);
+            || rel.Equals("BepInEx/config/BepInEx.cfg", StringComparison.OrdinalIgnoreCase) || rel.Equals("BepInEx/LogOutput.log", StringComparison.OrdinalIgnoreCase)
+            || rel.Equals("IgniteLoader/config/AkoRit/IgniteLoader.cfg", StringComparison.OrdinalIgnoreCase) || rel.Equals("IgniteLoader/LogOutput.log", StringComparison.OrdinalIgnoreCase);
 
         private static bool IsRootDoc(string rel) => rel.IndexOf('/') < 0 && DocExt.Contains(Path.GetExtension(rel));
 
-        /// <summary>zip entry name -> where it goes, relative to the game folder. BepInEx itself is never replaced.</summary>
+        /// <summary>zip entry name -> where it goes, relative to the game folder. BepInEx itself is never replaced.
+        /// A zip laid out for either loader (BepInEx/plugins/..., IgniteLoader/plugins/...) goes into the running one's
+        /// folder (1.16.0).</summary>
         public static Dictionary<string, string> Plan(List<string> names, string folder)
         {
             var entries = names.Select(n => (Key: n, Path: Pending.Norm(n)))
@@ -605,13 +610,13 @@ namespace NomadModManager
                 if (segs.Any(s => s.Length < 2)) break;
                 var first = segs[0][0];
                 if (!segs.All(s => s[0].Equals(first, StringComparison.OrdinalIgnoreCase))) break;
-                if (first.Equals("BepInEx", StringComparison.OrdinalIgnoreCase) || BepSubdirs.Contains(first) || first.EndsWith("_Data", StringComparison.OrdinalIgnoreCase)) break;
+                if (LoaderPaths.IsLoaderDirName(first) || BepSubdirs.Contains(first) || first.EndsWith("_Data", StringComparison.OrdinalIgnoreCase)) break;
                 paths = paths.Select(p => p.Substring(p.IndexOf('/') + 1)).ToList();
             }
             var items = entries.Select((e, i) => (e.Key, Rel: paths[i])).Where(i => !IsLoaderFile(i.Rel)).ToList();
 
             // Laid out from the game folder: .../BepInEx/plugins/...
-            var withBep = items.Select(i => (i.Key, i.Rel, Idx: Array.FindIndex(i.Rel.Split('/'), s => s.Equals("BepInEx", StringComparison.OrdinalIgnoreCase)))).Where(x => x.Idx >= 0).ToList();
+            var withBep = items.Select(i => (i.Key, i.Rel, Idx: Array.FindIndex(i.Rel.Split('/'), s => LoaderPaths.IsLoaderDirName(s)))).Where(x => x.Idx >= 0).ToList();
             if (withBep.Count > 0)
             {
                 var depth = withBep.Select(x => x.Idx).Min();
@@ -620,8 +625,8 @@ namespace NomadModManager
                 foreach (var i in items)
                 {
                     if (!i.Rel.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
-                    var rel = i.Rel.Substring(prefix.Length);
-                    if (!IsRootDoc(rel)) map[i.Key] = rel;
+                    var rel = LoaderPaths.ToBepInExLayout(i.Rel.Substring(prefix.Length));
+                    if (!IsRootDoc(rel) && !IsLoaderFile(rel)) map[i.Key] = LoaderPaths.Map(rel);
                 }
                 return map;
             }
@@ -631,7 +636,7 @@ namespace NomadModManager
                 foreach (var i in items)
                 {
                     var first = i.Rel.Split('/')[0];
-                    if (i.Rel.Contains("/") && BepSubdirs.Contains(first)) map[i.Key] = "BepInEx/" + i.Rel;
+                    if (i.Rel.Contains("/") && BepSubdirs.Contains(first)) map[i.Key] = LoaderPaths.Dir + "/" + i.Rel;
                     else if (!IsRootDoc(i.Rel)) map[i.Key] = folder + "/" + i.Rel;
                 }
                 return map;

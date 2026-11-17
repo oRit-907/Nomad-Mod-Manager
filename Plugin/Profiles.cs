@@ -21,7 +21,7 @@ namespace NomadModManager
         public int NexusId;        // to install it again if it's gone
     }
 
-    /// <summary>Profiles kept next to the game (BepInEx\NomadModManager\profiles.json).</summary>
+    /// <summary>Profiles kept next to the game (profiles.json in the data folder).</summary>
     internal static class Profiles
     {
         private static string FilePath => Path.Combine(Pending.Dir(BepInEx.Paths.GameRootPath), "profiles.json");
@@ -31,7 +31,10 @@ namespace NomadModManager
             try
             {
                 if (!File.Exists(FilePath)) return new List<Profile>();
-                return JsonConvert.DeserializeObject<List<Profile>>(File.ReadAllText(FilePath)) ?? new List<Profile>();
+                var list = JsonConvert.DeserializeObject<List<Profile>>(File.ReadAllText(FilePath)) ?? new List<Profile>();
+                // (1.16.0) a profile saved while the game ran on the other mod loader names the other loader's folder
+                foreach (var p in list) if (p?.On != null) foreach (var m in p.On) if (m != null) m.Rel = LoaderPaths.Here(m.Rel);
+                return list;
             }
             catch { return new List<Profile>(); }
         }

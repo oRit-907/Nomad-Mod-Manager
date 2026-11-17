@@ -26,7 +26,7 @@ namespace BepInEx6Compat
     {
         public const string Guid = "akorit.bepinex6compat";
         public const string Name = "BepInEx 6 Compatibility";
-        public const string Version = "1.0.1";
+        public const string Version = "1.0.2";
 
         internal static ManualLogSource Log;
         internal static string CompatDir => Path.Combine(Path.Combine(Paths.BepInExRootPath, "compat"), "BepInEx6");
@@ -38,6 +38,20 @@ namespace BepInEx6Compat
             Log = Logger;
             if (_started) return;
             _started = true;
+            // 1.0.2: Ignite Loader loads BepInEx 6 plugins itself (it converts them to its own API). Starting BepInEx 6's
+            // runtime beside it would load them a second time, so this stands aside there.
+            try
+            {
+                foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    string n;
+                    try { n = a.GetName().Name; } catch { continue; }
+                    if (n != "IgniteLoader") continue;
+                    Logger.LogInfo("Ignite Loader loads BepInEx 6 mods itself: nothing to do here.");
+                    return;
+                }
+            }
+            catch { }
             var core = Path.Combine(CompatDir, "BepInEx.Core.dll");
             if (!File.Exists(core))
             {

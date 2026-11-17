@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.13.11";
+        public const string Version = "1.16.0";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -113,7 +113,7 @@ namespace NomadModManager
             try { Directory.CreateDirectory(Pending.Dir(Paths.GameRootPath)); } catch { }
             PatcherNames.Tidy();
             if (!PatcherNames.ModFilesInstalled)
-                Logger.LogWarning("NomadModManager.ModFiles.dll is missing from BepInEx\\patchers — queued changes won't be applied at launch.");
+                Logger.LogWarning("NomadModManager.ModFiles.dll is missing from " + LoaderPaths.Dir + "\\patchers — queued changes won't be applied at launch.");
 
             Language = Config.Bind("General", "Language", "Game",
                 "The Mods menu's language: Game (follow the game's language), or en, de, es, fr, it, ja, ko, pl, pt, ru, tr, zh.");

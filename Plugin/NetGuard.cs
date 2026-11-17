@@ -118,7 +118,7 @@ namespace NomadModManager
                 if (asm.IsDynamic) return false;
                 var name = asm.GetName().Name;
                 if (name == "Mirror" || name.StartsWith("Mirror.", StringComparison.Ordinal) || name.StartsWith("Unity", StringComparison.Ordinal)
-                    || name.StartsWith("System", StringComparison.Ordinal) || name == "mscorlib" || name.StartsWith("BepInEx", StringComparison.Ordinal)
+                    || name.StartsWith("System", StringComparison.Ordinal) || name == "mscorlib" || name.StartsWith("BepInEx", StringComparison.Ordinal) || name.StartsWith("IgniteLoader", StringComparison.Ordinal) || name == "MelonLoader" || name == "Tomlet"
                     || name.StartsWith("NomadModManager", StringComparison.Ordinal)) return false;
                 var loc = asm.Location;
                 // Loaded from memory (a mod started without a restart) or from outside the game's own folder: a mod.

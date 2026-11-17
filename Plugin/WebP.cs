@@ -40,6 +40,14 @@ namespace NomadModManager
             try
             {
                 var dir = Path.Combine(Pending.Dir(Paths.GameRootPath), "native");
+                // (1.16.0) On Ignite Loader the menu can still be installed in the old BepInEx folder, with the two
+                // libraries from its zip next to it there, while its data folder is Ignite Loader's.
+                try
+                {
+                    var own = Path.Combine(Path.Combine(Path.GetDirectoryName(typeof(WebP).Assembly.Location) ?? "", "data"), "native");
+                    if (!File.Exists(Path.Combine(dir, "libwebp.dll")) && File.Exists(Path.Combine(own, "libwebp.dll"))) dir = own;
+                }
+                catch { }
                 var lib = Path.Combine(dir, "libwebp.dll");
                 // An update that came while the game ran leaves the new copies as *.nmm-new, and the change patcher
                 // only finishes those under plugins, patchers and config. Nothing has loaded these yet: finish them here.

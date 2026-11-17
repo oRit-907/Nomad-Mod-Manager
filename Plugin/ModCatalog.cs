@@ -63,7 +63,7 @@ namespace NomadModManager
         public static bool IsLoaderName(string n)
         {
             n = (n ?? "").Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
-            return n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase) || n.IndexOf("UnityCompat", StringComparison.OrdinalIgnoreCase) >= 0
+            return n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase) || n.StartsWith("IgniteLoader", StringComparison.OrdinalIgnoreCase) || n.IndexOf("UnityCompat", StringComparison.OrdinalIgnoreCase) >= 0
                    || n.Equals("BepInExPack", StringComparison.OrdinalIgnoreCase) || n.IndexOf("BepInExPack", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
@@ -194,7 +194,7 @@ namespace NomadModManager
                     if (list.Any(m => m.Full.Equals(full, StringComparison.OrdinalIgnoreCase))) continue;
                 }
 
-                var m = new ModEntry { Full = full, IsFolder = isDir, Rel = "BepInEx/plugins/" + Path.GetFileName(full) };
+                var m = new ModEntry { Full = full, IsFolder = isDir, Rel = LoaderPaths.Plugins + "/" + Path.GetFileName(full) };
                 var files = isDir ? SafeFiles(full) : new List<string> { full, full + Pending.OffSuffix }.Where(File.Exists).ToList();
                 m.Dlls.AddRange(files.Where(f => f.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)));
                 m.OffDlls.AddRange(files.Where(f => f.EndsWith(".dll" + Pending.OffSuffix, StringComparison.OrdinalIgnoreCase)));
@@ -303,7 +303,7 @@ namespace NomadModManager
             {
                 var anyPlugin = m.Dlls.Select(GetVerdict).Any(v => v != null && !v.NotAPlugin);
                 m.State = anyPlugin ? ModState.NotLoaded : ModState.Library;
-                m.Note = anyPlugin ? "BepInEx didn't start it — check BepInEx\\LogOutput.log" : "Support files only";
+                m.Note = anyPlugin ? LoaderPaths.Name + " didn't start it — check " + LoaderPaths.LogShown : "Support files only";
                 return;
             }
 
@@ -824,7 +824,7 @@ namespace NomadModManager
             {
                 var files = mod["Files"] as JArray;
                 if (files == null) continue;
-                var hit = files.Select(f => ((string)f ?? "").Replace('\\', '/'))
+                var hit = files.Select(f => LoaderPaths.Here((string)f ?? ""))
                                .Any(f => f.Equals(m.Rel, StringComparison.OrdinalIgnoreCase) || f.StartsWith(m.Rel + "/", StringComparison.OrdinalIgnoreCase));
                 if (!hit) continue;
                 m.NexusId = (int?)mod["ModId"] ?? 0;

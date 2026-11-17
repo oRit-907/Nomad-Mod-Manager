@@ -70,7 +70,7 @@ namespace NomadModManager
                 for (var j = i + 1; j < lines.Length && j < i + 40 && !Header.IsMatch(lines[j]); j++) more.Add(lines[j]);
                 var full = msg + "\n" + string.Join("\n", more.ToArray());
 
-                if (src.StartsWith("BepInEx"))
+                if (src.StartsWith("BepInEx") || src.StartsWith("Ignite Loader"))      // (Ignite Loader says the same things under its own name)
                 {
                     var b = Bracketed.Match(msg);
                     var name = b.Success ? b.Groups["name"].Value.Trim() : null;

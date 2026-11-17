@@ -57,6 +57,7 @@ namespace NomadModManager
         private static bool IsModOwner(string owner) =>
             !string.IsNullOrEmpty(owner)
             && !owner.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase)
+            && !owner.StartsWith("IgniteLoader", StringComparison.OrdinalIgnoreCase)
             && !owner.StartsWith("HarmonyX", StringComparison.OrdinalIgnoreCase)
             && owner.IndexOf("nomadmodmanager", StringComparison.OrdinalIgnoreCase) < 0
             && owner.IndexOf("unitycompat", StringComparison.OrdinalIgnoreCase) < 0

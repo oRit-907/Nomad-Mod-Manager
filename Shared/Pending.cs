@@ -9,6 +9,8 @@ namespace NomadModManager
     /// Changes that can't happen while Nomad Drive is running (the DLLs are in use), applied by the
     /// preloader patcher the next time the game starts, before any plugin loads.
     ///
+    /// (Paths are written the BepInEx way here; on Ignite Loader they are in IgniteLoader\ instead, see <see cref="LoaderPaths"/>.)
+    ///
     ///   BepInEx/plugins/NomadModManager/data/pending.txt   one "op|relative/path" per line:
     ///       remove|BepInEx/plugins/Some Mod      delete a mod's folder or DLL
     ///       disable|BepInEx/plugins/Some Mod     rename its *.dll to *.dll.disabled
@@ -25,8 +27,9 @@ namespace NomadModManager
         /// <summary>The Mods menu's data folder: BepInEx\plugins\NomadModManager\data, with the plugin (1.13.7). Until then
         /// it was BepInEx\NomadModManager (<see cref="LegacyDir"/>), which Nomad Mod Downloader may still write to.</summary>
         public static string Dir(string gameRoot) =>
-            Path.Combine(Path.Combine(Path.Combine(Path.Combine(gameRoot, "BepInEx"), "plugins"), "NomadModManager"), "data");
-        public static string LegacyDir(string gameRoot) => Path.Combine(Path.Combine(gameRoot, "BepInEx"), "NomadModManager");
+            Path.Combine(Path.Combine(Path.Combine(Path.Combine(gameRoot, LoaderPaths.Dir), "plugins"), "NomadModManager"), "data");
+        /// <summary>(Only ever there on BepInEx. On Ignite Loader this names a folder in its own, which nothing makes.)</summary>
+        public static string LegacyDir(string gameRoot) => Path.Combine(Path.Combine(gameRoot, LoaderPaths.Dir), "NomadModManager");
         public static string ListFile(string gameRoot) => Path.Combine(Dir(gameRoot), "pending.txt");
         private static string LegacyListFile(string gameRoot) => Path.Combine(LegacyDir(gameRoot), "pending.txt");
 
@@ -67,6 +70,8 @@ namespace NomadModManager
         /// </summary>
         public static string Migrate(string gameRoot)
         {
+            // 1.16.0: on Ignite Loader nothing is moved. What the menu kept while the game ran on BepInEx is copied once.
+            if (!LoaderPaths.Dir.Equals(LoaderPaths.BepInExDir, StringComparison.OrdinalIgnoreCase)) return BringOver(gameRoot);
             var old = LegacyDir(gameRoot);
             if (!Directory.Exists(old)) return null;
             var dir = Dir(gameRoot);
@@ -80,6 +85,57 @@ namespace NomadModManager
             int n = MoveInto(old, dir, true);
             try { if (!Directory.EnumerateFileSystemEntries(old).Any()) Directory.Delete(old); } catch { }
             return n > 0 ? $"Took {n} file(s) over from BepInEx\\NomadModManager into the Mods menu's data folder." : null;
+        }
+
+        /// <summary>
+        /// 1.16.0, Ignite Loader: the first time the Mods menu runs there and has no data folder yet, what it kept while
+        /// the game ran on BepInEx (sign-ins, profiles, the in-menu browser) is copied over. Copied, never moved, and
+        /// nothing is deleted: the BepInEx folder stays whole for going back to it, and Ignite Loader hands file calls on
+        /// "BepInEx\..." to its own folder, so "the old copy" may be this very folder (moving it into itself emptied it,
+        /// in a test build). Every file is listed before the first one is copied for the same reason: once a folder
+        /// exists on this side, asking for the old one shows this side's.
+        /// Changes queued for the other loader's folders are left behind.
+        /// </summary>
+        private static string BringOver(string gameRoot)
+        {
+            var dir = Dir(gameRoot);
+            if (Directory.Exists(dir)) return null;
+            var olds = LoaderPaths.OtherLoaderData(gameRoot);
+            if (olds == null) return null;
+            foreach (var old in olds)
+            {
+                if (!Directory.Exists(old)) continue;
+                var files = new List<string>();
+                var todo = new List<string> { old };
+                while (todo.Count > 0)
+                {
+                    var d = todo[todo.Count - 1];
+                    todo.RemoveAt(todo.Count - 1);
+                    try { files.AddRange(Directory.GetFiles(d)); } catch { }
+                    try { todo.AddRange(Directory.GetDirectories(d)); } catch { }
+                }
+                var from = Path.GetFullPath(old).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                int n = 0;
+                foreach (var f in files)
+                {
+                    try
+                    {
+                        var full = Path.GetFullPath(f);
+                        if (!full.StartsWith(from, StringComparison.OrdinalIgnoreCase)) continue;
+                        var rel = full.Substring(from.Length);
+                        var name = Path.GetFileName(rel);
+                        if (name.Equals("pending.txt", StringComparison.OrdinalIgnoreCase) || name.EndsWith(NewSuffix, StringComparison.OrdinalIgnoreCase)) continue;
+                        var to = Path.Combine(dir, rel);
+                        if (File.Exists(to)) continue;
+                        Directory.CreateDirectory(Path.GetDirectoryName(to));
+                        File.Copy(f, to, false);
+                        n++;
+                    }
+                    catch { }
+                }
+                if (n > 0) return $"Copied what the Mods menu kept on BepInEx ({n} file(s)) to {LoaderPaths.PluginsShown}\\NomadModManager\\data. The BepInEx folder is left as it is.";
+            }
+            return null;
         }
 
         private static int MoveInto(string from, string to, bool top)
@@ -124,16 +180,17 @@ namespace NomadModManager
 
         public static string Norm(string rel) => rel.Replace('\\', '/').Trim('/');
 
-        /// <summary>Game root + relative path, refusing anything outside BepInEx.</summary>
+        /// <summary>Game root + relative path, refusing anything outside the loader's folder. A path written the BepInEx
+        /// way (by the website, by an older Nomad Mod Downloader) is in the running loader's folder.</summary>
         public static string Full(string gameRoot, string rel)
         {
-            rel = Norm(rel);
+            rel = LoaderPaths.Map(rel);
             if (rel.Length == 0 || rel.Split('/').Any(s => s == ".." || s.Contains(":")))
                 throw new InvalidOperationException("Unsafe path: " + rel);
             var full = Path.GetFullPath(Path.Combine(gameRoot, rel.Replace('/', Path.DirectorySeparatorChar)));
-            var bep = Path.GetFullPath(Path.Combine(gameRoot, "BepInEx")).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var bep = Path.GetFullPath(Path.Combine(gameRoot, LoaderPaths.Dir)).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             if (!full.StartsWith(bep, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Path is outside BepInEx: " + rel);
+                throw new InvalidOperationException("Path is outside " + LoaderPaths.Dir + ": " + rel);
             return full;
         }
 
@@ -198,7 +255,7 @@ namespace NomadModManager
             var result = new List<string>();
             foreach (var sub in new[] { "plugins", "patchers", "config" })
             {
-                var d = Path.Combine(Path.Combine(gameRoot, "BepInEx"), sub);
+                var d = Path.Combine(Path.Combine(gameRoot, LoaderPaths.Dir), sub);
                 if (!Directory.Exists(d)) continue;
                 result.AddRange(FilesOutsideData(gameRoot, d, "*" + NewSuffix));
             }

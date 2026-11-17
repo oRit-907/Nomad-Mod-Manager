@@ -637,7 +637,9 @@ namespace NomadModManager
             Glass(card, 16);
 
             var ky = card.y + 18 * _s;
-            if (Edition.Nexus) Row(card, ref ky, "BepInEx", BepInExVersion(), CGood);
+            // (1.16.0: on Ignite Loader the row is the loader and its version; the BepInEx app isn't what set it up)
+            if (LoaderPaths.IsIgnite) Row(card, ref ky, LoaderPaths.Name, LoaderPaths.Version, CGood);
+            else if (Edition.Nexus) Row(card, ref ky, "BepInEx", BepInExVersion(), CGood);
             else Row(card, ref ky, "BepInEx app", DownloaderStatus(out var dlColor), dlColor);
             Row(card, ref ky, "Changes", reload > 0 ? $"{reload} waiting — press Reload" : restart > 0 ? $"{restart} need a restart"
                 : held > 0 ? $"{held} after this online game" : "None waiting", reload + restart > 0 ? CWarn : held > 0 ? CMuted : CGood);
@@ -1110,7 +1112,7 @@ namespace NomadModManager
         /// </summary>
         private void RemoveOldCopy(ModEntry m)
         {
-            var target = "BepInEx/plugins/" + Community.SafeName(m.Name);
+            var target = LoaderPaths.Plugins + "/" + Community.SafeName(m.Name);
             if (m.Rel.Equals(target, StringComparison.OrdinalIgnoreCase) || m.Rel.StartsWith(target + "/", StringComparison.OrdinalIgnoreCase)) return;
             _cat.Remove(m);
             _cat.ForgetVerdicts(); // the new copy may start now
@@ -1125,7 +1127,7 @@ namespace NomadModManager
         private void DrawInstalled(Rect r)
         {
             Lbl(new Rect(r.x, r.y, r.width, 36 * _s), "Installed", _h2);
-            Lbl(new Rect(r.x, r.y + 34 * _s, r.width, 22 * _s), "Mods in BepInEx\\plugins", Tint(_small, CMuted));
+            Lbl(new Rect(r.x, r.y + 34 * _s, r.width, 22 * _s), "Mods in " + LoaderPaths.PluginsShown, Tint(_small, CMuted));
             var auto = _host.AutoStart.Value;
             if (Toggle(new Rect(r.xMax - 380 * _s, r.y + 8 * _s, 380 * _s, 30 * _s), auto, "Start new mods without a restart"))
             { _host.AutoStart.Value = !auto; _host.Config.Save(); }
@@ -1200,6 +1202,10 @@ namespace NomadModManager
         private string HealthBanner(out string fix, out Action action)
         {
             fix = null; action = null;
+            // (1.16.0) Unity Compatibility is a BepInEx patcher set up by Check BepInEx: on Ignite Loader there is nothing
+            // to send the player to yet
+            if (StartupLog.AnyStrippedUnity && !StartupLog.UnityCompatInstalled && LoaderPaths.IsIgnite)
+                return "Some mods use Unity code that Nomad Drive's build left out, so parts of them won't work. Ignite Loader can't put that code back yet.";
             if (StartupLog.AnyStrippedUnity && !StartupLog.UnityCompatInstalled)
             {
                 fix = Edition.Nexus ? "BepInEx on Nexus" : "Open Check BepInEx";
@@ -1207,7 +1213,7 @@ namespace NomadModManager
                 return Edition.Nexus ? "Some mods use Unity code that Nomad Drive's build left out. Unity Compatibility, part of BepInEx for Nomad Drive on Nexus Mods, puts it back."
                     : "Some mods use Unity code that Nomad Drive's build left out. Unity Compatibility (set up by Check BepInEx) puts it back.";
             }
-            if (Bep.Major == 5 && File.Exists(Path.Combine(Path.Combine(Paths.GameRootPath, "BepInEx"), "core\\BepInEx.Core.dll")))
+            if (Bep.Major == 5 && !LoaderPaths.IsIgnite && File.Exists(Path.Combine(Path.Combine(Paths.GameRootPath, "BepInEx"), "core\\BepInEx.Core.dll")))
             {
                 fix = Edition.Nexus ? "BepInEx on Nexus" : "Open Check BepInEx";
                 action = OpenCheck;

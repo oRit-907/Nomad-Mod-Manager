@@ -39,9 +39,17 @@ namespace NomadModManager
             Text("errors-this-session.txt", string.Join("\n", SessionErrors.Read().Select(e => $"[{e.Level}] {e.Source}: {e.Text}" + (e.Count > 1 ? $"  (x{e.Count})" : "")).ToArray()));
             Text("activity.txt", string.Join("\n", Activity.Recent(400).Select(a => a.Time.ToString("yyyy-MM-dd HH:mm:ss") + "  " + a.Text).ToArray()));
             Text("multiplayer.txt", Multiplayer());
-            Copy("BepInEx/LogOutput.log", StartupLog.LogPath);
-            Copy("BepInEx/LogOutput.log.1", Path.Combine(Paths.BepInExRootPath, "LogOutput.log.1"));
-            Copy("BepInEx/BepInEx.cfg", Path.Combine(Paths.ConfigPath, "BepInEx.cfg"));
+            // (1.16.0: the running loader's own files, under its folder's name)
+            var loader = LoaderPaths.Dir;
+            Copy(loader + "/LogOutput.log", StartupLog.LogPath);
+            Copy(loader + "/LogOutput.log.1", Path.Combine(Paths.BepInExRootPath, "LogOutput.log.1"));
+            if (LoaderPaths.IsIgnite)
+            {
+                Copy(loader + "/IgniteLoader.cfg", Paths.BepInExConfigPath);
+                Copy(loader + "/LoaderStatus.txt", Path.Combine(Paths.BepInExRootPath, "LoaderStatus.txt"));
+                Copy(loader + "/CompatibilityReport.txt", Path.Combine(Paths.BepInExRootPath, "CompatibilityReport.txt"));
+            }
+            else Copy("BepInEx/BepInEx.cfg", Path.Combine(Paths.ConfigPath, "BepInEx.cfg"));
             Copy("doorstop_config.ini", Path.Combine(root, "doorstop_config.ini"));
             string player = null;
             try { player = Application.consoleLogPath; } catch { }
@@ -76,12 +84,12 @@ namespace NomadModManager
             "Nomad Drive logs, exported by the Mods menu (Nomad Mod Manager " + ModManagerPlugin.Version + ") on " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + ".\n\n" +
             "Send this zip to the mod's author (Nexus Bugs tab, the website's Report a bug, or Discord).\n" +
             "Your Windows user name was replaced with <user>.\n\n" +
-            "system.txt               game, Unity, BepInEx and Windows versions\n" +
+            "system.txt               game, Unity, mod loader and Windows versions\n" +
             "mods.txt                 every mod: on/off, version, where it came from, its plugins, whether it changes multiplayer\n" +
-            "errors-this-session.txt  errors and warnings from the BepInEx log, grouped\n" +
+            "errors-this-session.txt  errors and warnings from the mod log, grouped\n" +
             "activity.txt             installs, updates and switches made in the Mods menu\n" +
             "multiplayer.txt          the lobby, other players' mods, the last drop report, Safe join\n" +
-            "BepInEx/LogOutput.log    the full BepInEx log of this session (.1 = the one before)\n" +
+            (LoaderPaths.Dir + "/LogOutput.log").PadRight(25) + "the full mod log of this session (.1 = the one before)\n" +
             "Unity/Player.log         Unity's own log (Player-prev.log = the session before)\n";
 
         private static string SystemInfo2()
@@ -90,7 +98,7 @@ namespace NomadModManager
             void L(string k, object v) => sb.Append(k.PadRight(22)).Append(v).Append('\n');
             L("Game version", Application.version);
             L("Unity", Application.unityVersion);
-            L("BepInEx", typeof(Chainloader).Assembly.GetName().Version);
+            L(LoaderPaths.Name, LoaderPaths.IsIgnite ? LoaderPaths.Version : "v" + typeof(Chainloader).Assembly.GetName().Version);
             L("Mods menu", ModManagerPlugin.Version);
             try { L("Windows", SystemInfo.operatingSystem); L("CPU", SystemInfo.processorType); L("RAM (MB)", SystemInfo.systemMemorySize); L("GPU", SystemInfo.graphicsDeviceName + " (" + SystemInfo.graphicsDeviceVersion + ")"); } catch { }
             L("Screen", Screen.width + "x" + Screen.height);

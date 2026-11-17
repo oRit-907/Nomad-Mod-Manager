@@ -16,7 +16,27 @@ namespace NomadModManager
     {
         private static string P(string rel) => Path.Combine(Paths.PatcherPluginPath, rel);
 
-        public static bool ModFilesInstalled => File.Exists(P("NomadModManager.ModFiles.dll")) || File.Exists(P("NomadModManager.Patcher.dll"));
+        public static bool ModFilesInstalled => File.Exists(P("NomadModManager.ModFiles.dll")) || File.Exists(P("NomadModManager.Patcher.dll")) || ModFilesLoaded;
+
+        /// <summary>(1.16.0) The patcher ran this start, wherever it is: Ignite Loader also runs the ones still in the old
+        /// BepInEx\patchers folder.</summary>
+        private static bool ModFilesLoaded
+        {
+            get
+            {
+                try
+                {
+                    foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        string n;
+                        try { n = a.GetName().Name; } catch { continue; }
+                        if (n == "NomadModManager.ModFiles" || n == "NomadModManager.Patcher") return true;
+                    }
+                }
+                catch { }
+                return false;
+            }
+        }
 
         public static void Tidy()
         {

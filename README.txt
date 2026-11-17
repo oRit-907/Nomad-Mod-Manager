@@ -65,7 +65,7 @@ If you want to see upcoming features early, join the [url=https://discord.gg/nom
 
 [size=5][b][color=#f5b54e]Requirements[/color][/b][/size]
 [list]
-[*][b]BepInEx 5[/b]: [url=https://www.nomaddrivemods.online/mod/2]BepInEx for Nomad Drive[/url]. Mods built for BepInEx 6 load too, through BepInEx 6 support.
+[*][b]BepInEx 5 or Ignite Loader[/b]: either one, and the same download runs on both. [b]Check BepInEx[/b] (on [b]How to install › Get BepInEx[/b]) sets up whichever you pick; [url=https://www.nomaddrivemods.online/mod/20]Ignite Loader[/url] has its own page.
 [*]Still on BepInEx 6? It isn't supported any more: [b]Check BepInEx[/b] (on [b]How to install › Get BepInEx[/b]) replaces it with BepInEx 5 and keeps your mods and settings.
 [/list]
 
@@ -95,6 +95,13 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.16.0[/b][/size]
+[list]
+[*][b]One download for BepInEx 5 and Ignite Loader[/b]: the same files run on both. On Ignite Loader the menu works in IgniteLoader\plugins, \patchers and \config, shows the loader and its version, reads its log, and puts its own files in IgniteLoader\plugins\NomadModManager\data.
+[*]Mods install into the folder of the loader you run, whichever way their zip is laid out (for BepInEx or for Ignite Loader). Neither loader's own files are ever replaced by a mod.
+[*]Moving to Ignite Loader: the first time the menu starts there, what it kept on BepInEx (sign-ins, profiles, the in-menu browser) is [b]copied[/b] over. Nothing is moved or deleted, so going back to BepInEx finds everything as it was. Profiles and the lists of what each mod installed work on either loader.
+[*]On BepInEx nothing changes.
+[/list]
 [size=3][b]1.13.11[/b][/size]
 [list]
 [*][b]When the menu's browser doesn't start, it says why[/b]: Windows' answer was one long line that the menu cut off before the reason. Now it reads, for example, "Windows Security or your antivirus blocked NomadBrowser.exe" with what to do about it, and the whole answer goes in the BepInEx log.
