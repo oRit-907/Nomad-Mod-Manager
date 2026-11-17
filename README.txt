@@ -95,6 +95,12 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.13.11[/b][/size]
+[list]
+[*][b]When the menu's browser doesn't start, it says why[/b]: Windows' answer was one long line that the menu cut off before the reason. Now it reads, for example, "Windows Security or your antivirus blocked NomadBrowser.exe" with what to do about it, and the whole answer goes in the BepInEx log.
+[*]When the browser's file is missing or damaged, the button becomes [b]Download it again[/b] and the menu fetches it again.
+[*]Try again also works when you had opened Nexus just to look around.
+[/list]
 [size=3][b]1.13.10[/b][/size]
 [list]
 [*][b]Smoother multiplayer[/b]: while you were in a lobby the menu worked out the mod list it shares again on every frame, about 50 MB of memory a minute for the game to clean up (half of everything the game and all mods made in a multiplayer session, so the memory cleanup paused the game about twice as often). It is now worked out every 5 seconds.

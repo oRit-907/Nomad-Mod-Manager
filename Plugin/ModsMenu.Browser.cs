@@ -254,9 +254,19 @@ namespace NomadModManager
             }
             if (_browserError.Length > 0)
             {
-                Lbl(new Rect(page.x + 30 * _s, page.y + 30 * _s, page.width - 60 * _s, 60 * _s), _browserError, Tint(_wrap, CInk));
-                if (PadBtn(new Rect(page.x + 30 * _s, page.y + 100 * _s, 160 * _s, 42 * _s), "Try again", true)) { _browserError = ""; if (_browserNow.ModId > 0) _browserQueue.Insert(0, _browserNow); NextInBrowser(); }
-                if (PadBtn(new Rect(page.x + 200 * _s, page.y + 100 * _s, 300 * _s, 42 * _s), "Open in my web browser", false)) NexusFallback();
+                // (room for four lines: the reason is the part that matters, and it used to be cut off)
+                Lbl(new Rect(page.x + 30 * _s, page.y + 30 * _s, page.width - 60 * _s, 110 * _s), _browserError, Tint(_wrap, CInk));
+                var again = InGameBrowser.StartNeedsDownload;
+                var bw = (again ? 230 : 160) * _s;
+                if (PadBtn(new Rect(page.x + 30 * _s, page.y + 150 * _s, bw, 42 * _s), again ? "Download it again" : "Try again", true))
+                {
+                    _browserError = "";
+                    if (_browserNow.ModId > 0) _browserQueue.Insert(0, _browserNow);
+                    if (again) InGameBrowser.DownloadAgain();     // (the page then shows the download, and opens the mod when it is done)
+                    else if (_browserQueue.Count > 0) NextInBrowser();
+                    else OpenNexusHere();
+                }
+                if (PadBtn(new Rect(page.x + 40 * _s + bw, page.y + 150 * _s, 300 * _s, 42 * _s), "Open in my web browser", false)) NexusFallback();
                 DrawPadCursor();
                 return;
             }

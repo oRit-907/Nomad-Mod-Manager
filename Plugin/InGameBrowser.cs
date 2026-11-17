@@ -219,6 +219,7 @@ namespace NomadModManager
         private static bool Start(string url, int width, int height, out string error)
         {
             error = null;
+            StartNeedsDownload = false;
             _wanted = true; _lastW = width; _lastH = height;
             if (Running && Connected) { Send("nav " + url); return true; }
             Stop();
@@ -241,7 +242,72 @@ namespace NomadModManager
                 _reader.Start();
                 return true;
             }
-            catch (Exception e) { error = e.Message; Stop(); return false; }
+            catch (Exception e)
+            {
+                error = StartError(e, out var again);
+                StartNeedsDownload = again;
+                // (the whole of what Windows said goes in the log: the menu only has room for the reason)
+                ModManagerPlugin.Log.LogWarning("In-game browser didn't start: " + error + "\n" + e.Message);
+                Stop();
+                return false;
+            }
+        }
+
+        /// <summary>The last start failed because the browser's own file is missing or damaged: downloading it again is the fix.</summary>
+        public static bool StartNeedsDownload { get; private set; }
+
+        /// <summary>Forgets the browser app that is there, so the menu downloads it again (Chromium is kept when it is whole).</summary>
+        public static void DownloadAgain()
+        {
+            StartNeedsDownload = false;
+            try { if (File.Exists(VersionFile)) File.Delete(VersionFile); } catch { }
+        }
+
+        /// <summary>
+        /// Why Windows wouldn't start the browser, in plain words. Windows' own answer comes as one long line (the program,
+        /// its command line, its folder, and only at the very end the reason), which doesn't fit in the menu and isn't
+        /// something a player can act on.
+        /// </summary>
+        /// <param name="downloadAgain">The file is missing or damaged, so downloading it again is what helps.</param>
+        internal static string StartError(Exception e, out bool downloadAgain)
+        {
+            downloadAgain = false;
+            var code = 0;
+            try { if (e is System.ComponentModel.Win32Exception w) code = w.NativeErrorCode; } catch { }
+            var said = e?.Message ?? "";
+            var at = said.LastIndexOf("Native error=", StringComparison.OrdinalIgnoreCase);
+            said = at >= 0 ? said.Substring(at + 13).Trim() : said.Length > 160 ? "" : said.Trim();
+            long size = -1;
+            try { if (File.Exists(Exe)) size = new FileInfo(Exe).Length; } catch { }
+            return StartReason(code, said, size, out downloadAgain);
+        }
+
+        /// <param name="code">Windows' error number (0: not known).</param>
+        /// <param name="said">Windows' own words for it ("" when there are none).</param>
+        /// <param name="exeSize">The size of NomadBrowser.exe now, -1 when it isn't there.</param>
+        internal static string StartReason(int code, string said, long exeSize, out bool downloadAgain)
+        {
+            downloadAgain = false;
+            const string allow = " Allow NomadBrowser.exe in your antivirus (Windows Security \u203a Virus & threat protection \u203a Protection history), then press Try again.";
+            if (exeSize < 0 || code == 2 || code == 3 || code == 226)
+            {
+                downloadAgain = true;
+                return "its file NomadBrowser.exe is gone. An antivirus may have removed it. Press Download it again; if it disappears again, allow NomadBrowser.exe in your antivirus.";
+            }
+            if (exeSize < 4096 || code == 11 || code == 193 || code == 216)
+            {
+                downloadAgain = true;
+                return "its file NomadBrowser.exe is damaged. Press Download it again.";
+            }
+            if (code == 225 || code == 1260 || code == 4551)
+                return "Windows Security or your antivirus blocked NomadBrowser.exe." + allow;
+            if (code == 5)
+                return "Windows refused to run NomadBrowser.exe (access denied). That is usually an antivirus or Windows Security blocking it." + allow;
+            if (code == 740)
+                return "NomadBrowser.exe is set to need administrator rights. Take \"Run as administrator\" off it (right-click \u203a Properties \u203a Compatibility), then press Try again.";
+            if (code == 14001 || code == 126)
+                return "a part of Windows that NomadBrowser.exe needs is missing (the Microsoft Visual C++ runtime). Install \"Microsoft Visual C++ Redistributable (x64)\" from Microsoft, then press Try again.";
+            return "Windows wouldn't run NomadBrowser.exe" + (code != 0 ? " (error " + code + ")" : "") + (said.Length > 0 ? ": " + said.TrimEnd('.') + "." : ".") + " An antivirus blocking it is the usual cause.";
         }
 
         /// <summary>Closes the browser (the menu closed it, or the game is quitting).</summary>
