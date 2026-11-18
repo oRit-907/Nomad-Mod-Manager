@@ -3,9 +3,8 @@
 A BepInEx 5 plugin for Nomad Drive by AkoRit that adds a **Mods** button to the main menu and pause menu: find, install,
 update and switch mods on and off without a restart, and play online without getting kicked.
 This repo has all of the Mods menu: its source (`Plugin/`, `Patcher/`, `Shared/`, `Lang/`), the in-game browser the
-website edition uses (`NomadBrowser/`), and its releases. (Until now it lived in
-[NomadModDownloader](https://github.com/oRit-907/NomadModDownloader), `mod/NomadModManager`; the older history and
-releases are there.)
+website edition uses (`NomadBrowser/`), and its releases. (It used to live in the
+NomadModDownloader repo, which is no longer online.)
 
 ## Two editions
 
