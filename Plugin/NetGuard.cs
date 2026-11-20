@@ -31,7 +31,7 @@ namespace NomadModManager
         private static readonly HashSet<string> Told = new HashSet<string>();
         /// <summary>Mods whose messages were held back in this game (for the join doctor).</summary>
         internal static readonly HashSet<string> Held = new HashSet<string>();
-        internal static void ForgetHeld() { Held.Clear(); Told.Clear(); }
+        internal static void ForgetHeld() { Held.Clear(); Told.Clear(); lock (ModCache) ModCache.Clear(); }
         private static float _nextScan;
         private static string _gameDir;
 
@@ -65,7 +65,7 @@ namespace NomadModManager
             _serverActive = _netServer?.GetProperty("active", BindingFlags.Static | BindingFlags.Public);
             if (_connToServer == null || _netServer == null || _netMessage == null || _sendGeneric == null)
                 throw new Exception("this version of the game's networking isn't recognised");
-            _gameDir = Path.GetFullPath(Application.dataPath);
+            GameDir();
             _harmony = new Harmony(ModManagerPlugin.Guid + ".netguard");
             // A mod's own networked objects call the host with Commands: a host without the mod can't run them.
             var nb = mirror.GetType("Mirror.NetworkBehaviour");
@@ -111,7 +111,27 @@ namespace NomadModManager
 
         internal static bool Ready => _ready;
 
+        /// <summary>
+        /// True when this assembly is a mod's, not the game's own.
+        /// 1.16.2: the game's own code (Assembly-CSharp, EvilCore.* and anything else in Nomad Drive_Data\Managed) is
+        /// never a mod. Until now it was judged by where the file was loaded from, and Assembly-CSharp rewritten in memory
+        /// (by a patcher or a loader) has no file, so it counted as a mod: its Commands were held back and as a guest
+        /// you stayed connected and could move, but nothing you used worked.
+        /// </summary>
         internal static bool IsMod(Assembly asm)
+        {
+            if (asm == null) return false;
+            lock (ModCache)
+                if (ModCache.TryGetValue(asm, out var known)) return known;
+            var mod = Judge(asm);
+            lock (ModCache) ModCache[asm] = mod;
+            return mod;
+        }
+
+        /// <summary>IsMod's answer per assembly (it runs on every Command the game sends).</summary>
+        private static readonly Dictionary<Assembly, bool> ModCache = new Dictionary<Assembly, bool>();
+
+        private static bool Judge(Assembly asm)
         {
             try
             {
@@ -120,12 +140,53 @@ namespace NomadModManager
                 if (name == "Mirror" || name.StartsWith("Mirror.", StringComparison.Ordinal) || name.StartsWith("Unity", StringComparison.Ordinal)
                     || name.StartsWith("System", StringComparison.Ordinal) || name == "mscorlib" || name.StartsWith("BepInEx", StringComparison.Ordinal) || name.StartsWith("IgniteLoader", StringComparison.Ordinal) || name == "MelonLoader" || name == "Tomlet"
                     || name.StartsWith("NomadModManager", StringComparison.Ordinal)) return false;
+                if (IsGameAssembly(name)) return false;
+                // A mod the Mods menu knows (it installed it, or it's in the plugins folder): a mod wherever it was loaded from.
+                if (ModFor(asm) != null) return true;
                 var loc = asm.Location;
-                // Loaded from memory (a mod started without a restart) or from outside the game's own folder: a mod.
-                return string.IsNullOrEmpty(loc) || !Path.GetFullPath(loc).StartsWith(_gameDir, StringComparison.OrdinalIgnoreCase);
+                // Loaded from memory: a mod started without a restart is renamed Name_liveN. Anything else loaded from memory
+                // isn't known to be a mod, so it isn't treated as one (that would block the game's own interactions).
+                if (string.IsNullOrEmpty(loc)) return name.IndexOf("_live", StringComparison.Ordinal) > 0;
+                // From outside the game's own data folder (BepInEx\plugins, for example): a mod.
+                var gameDir = GameDir();
+                return gameDir != null && !Norm(Path.GetFullPath(loc)).StartsWith(gameDir, StringComparison.OrdinalIgnoreCase);
             }
             catch { return false; }
         }
+
+        private static string _managedDir;
+        private static readonly Dictionary<string, bool> GameNames = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The game's own code: Assembly-CSharp*, EvilCore*, or a file of that name in Nomad Drive_Data\Managed.</summary>
+        private static bool IsGameAssembly(string name)
+        {
+            if (name.StartsWith("Assembly-CSharp", StringComparison.OrdinalIgnoreCase) || name.StartsWith("EvilCore", StringComparison.OrdinalIgnoreCase)) return true;
+            lock (GameNames)
+            {
+                if (GameNames.TryGetValue(name, out var known)) return known;
+                bool game = false;
+                try
+                {
+                    if (_managedDir == null) _managedDir = Path.Combine(Path.GetFullPath(Application.dataPath), "Managed");
+                    game = File.Exists(Path.Combine(_managedDir, name + ".dll"));
+                }
+                catch { }
+                GameNames[name] = game;
+                return game;
+            }
+        }
+
+        private static string GameDir()
+        {
+            if (_gameDir == null)
+            {
+                try { _gameDir = Norm(Path.GetFullPath(Application.dataPath)); } catch { return null; }
+            }
+            return _gameDir;
+        }
+
+        /// <summary>Same separators and a closing one, so C:/Games/x and C:\Games\x\ match (Proton and some Steam libraries differ).</summary>
+        private static string Norm(string p) => p.Replace('/', '\\').TrimEnd('\\') + "\\";
 
         /// <summary>Runs before a mod's message is sent. False holds it back.</summary>
         private static bool SendPrefix(object __instance, MethodBase __originalMethod)

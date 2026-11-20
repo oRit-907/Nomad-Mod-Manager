@@ -95,6 +95,10 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.16.2[/b][/size]
+[list]
+[*][b]Interactions work again when you join a multiplayer game[/b]: the multiplayer kick protection could mistake the game's own code (Assembly-CSharp, EvilCore) for a mod and hold back its Commands. You stayed connected and could walk around, but nothing you used worked. The game's own code is never treated as a mod now. Thanks to the player who tracked this down.
+[/list]
 [size=3][b]1.16.1[/b][/size]
 [list]
 [*][b]Save backups take far less room[/b]: a backup now holds only the saves that changed since the one before it, and no automatic backup is made when no save has changed. Until now every backup was a whole copy of your saves and the last ten were kept, which grew to several GB for players with big saves.
