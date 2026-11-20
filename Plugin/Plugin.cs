@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.16.0";
+        public const string Version = "1.16.1";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -119,6 +119,14 @@ namespace NomadModManager
                 "The Mods menu's language: Game (follow the game's language), or en, de, es, fr, it, ja, ko, pl, pt, ru, tr, zh.");
             EndOnQuit = Config.Bind("General", "EndGameAfterQuit", true,
                 "Make sure the game really ends after you quit. Some mods leave work running that keeps the game open in the background (Steam still shows it as running).");
+            // 1.16.1: the save backups have limits, and what older versions piled up is cut down to them at start.
+            BackupsOn = Config.Bind("Backups", "BackUpSavesAutomatically", true,
+                "Back up your saves before the Mods menu installs, updates, removes or switches mods. Only saves that changed are copied. Off: only the backups you make yourself (Activity, Save backups).");
+            BackupsKept = Config.Bind("Backups", "AutomaticBackupsKept", 5,
+                new BepInEx.Configuration.ConfigDescription("How many automatic save backups are kept. The oldest go first; backups you made yourself are never removed.", new BepInEx.Configuration.AcceptableValueRange<int>(1, 50)));
+            BackupsMaxMb = Config.Bind("Backups", "MostSpaceMB", 500,
+                new BepInEx.Configuration.ConfigDescription("The most room the automatic save backups may take together, in MB (0 = no limit). When they take more, the oldest are removed; the newest one always stays. Backups you made yourself don't count and are never removed.", new BepInEx.Configuration.AcceptableValueRange<int>(0, 100000)));
+            SaveBackups.TidyAtStart();
             Application.quitting += OnQuitting;
             // Sign in with Nexus stays hidden until Nexus registers the app (NexusAccount.ClientIdBuiltIn); a test build
             // (-p:TestKey=true) can set a client id in the config.
@@ -149,6 +157,8 @@ namespace NomadModManager
         }
 
         internal ConfigEntry<bool> EndOnQuit;
+        internal ConfigEntry<bool> BackupsOn;
+        internal ConfigEntry<int> BackupsKept, BackupsMaxMb;
         internal static ConfigEntry<string> NexusClientId;
         internal ConfigEntry<string> DownloadsFolder;
         internal ConfigEntry<bool> BrowserAutoGet;

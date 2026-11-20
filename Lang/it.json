@@ -287,5 +287,14 @@
  "Open a mod, go to its Files tab and press the download button: the Mods menu installs it.": "Apri una mod, vai alla scheda Files e premi il pulsante di download: il menu Mod la installa.",
  "That's the Nexus edition of the Mods menu. You have the website edition, which has everything the Nexus one has and updates itself from the website, so it isn't installed over it.": "Questa è l'edizione Nexus del menu Mod. Tu hai l'edizione del sito, che ha tutto quello di Nexus e si aggiorna da sola dal sito, quindi non viene installata sopra.",
  "Switched to the Nexus edition of the Mods menu: your mods, profiles, settings and save backups are all here. Website mods now get their updates from Nexus when they're on it; your website account and subscriptions are kept for if you switch back.": "Passato all'edizione Nexus del menu Mod: mod, profili, impostazioni e copie dei salvataggi sono tutti qui. Le mod del sito ora si aggiornano da Nexus quando ci sono; account e iscrizioni del sito restano, se torni indietro.",
- "Switched to the website edition of the Mods menu: your mods, profiles, settings and save backups are all here, and your website subscriptions and account work again.": "Passato all'edizione del sito del menu Mod: mod, profili, impostazioni e copie dei salvataggi sono tutti qui, e iscrizioni e account del sito funzionano di nuovo."
+ "Switched to the website edition of the Mods menu: your mods, profiles, settings and save backups are all here, and your website subscriptions and account work again.": "Passato all'edizione del sito del menu Mod: mod, profili, impostazioni e copie dei salvataggi sono tutti qui, e iscrizioni e account del sito funzionano di nuovo.",
+ "Your saves are backed up before this menu changes mods, when a save has changed since the last backup. A backup holds only the saves that changed.": "I tuoi salvataggi vengono copiati prima che questo menu modifichi le mod, se un salvataggio è cambiato dall'ultimo backup. Un backup contiene solo i salvataggi cambiati.",
+ "All backups together take {0}.": "Tutti i backup insieme occupano {0}.",
+ "Back up automatically": "Backup automatico",
+ "Automatic backups kept": "Backup automatici conservati",
+ "Most space": "Spazio massimo",
+ "No limit": "Nessun limite",
+ "Delete automatic backups": "Elimina i backup automatici",
+ "Deleted {0} automatic backup(s).": "Backup automatici eliminati: {0}.",
+ "Deleted the backup.": "Backup eliminato."
 }

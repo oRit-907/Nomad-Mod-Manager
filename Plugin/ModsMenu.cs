@@ -2276,33 +2276,104 @@ namespace NomadModManager
             if (Btn(new Rect(view.x, view.yMax - 44 * _s, 260 * _s, 42 * _s), "Open the full log", false)) OpenFolder(StartupLog.LogPath);
         }
 
+        private string _confirmDelete;
+        private float _limitsDueAt;
+        private static readonly int[] SpaceSteps = { 0, 100, 250, 500, 1000, 2000, 5000, 10000, 20000 };
+
+        /// <summary>A label, then − value +. Returns -1, 0 or 1.</summary>
+        private int Stepper(ref float x, float y, string label, string value)
+        {
+            var lw = _small.CalcSize(Lang.C(label)).x + 12 * _s;
+            Lbl(new Rect(x, y, lw, 40 * _s), label, new GUIStyle(Tint(_small, CText)) { alignment = TextAnchor.MiddleLeft });
+            x += lw;
+            var d = 0;
+            if (Btn(new Rect(x, y + 2 * _s, 36 * _s, 36 * _s), "-", false)) d = -1;
+            x += 38 * _s;
+            Lbl(new Rect(x, y, 92 * _s, 40 * _s), value, Center(_smallBold, CText));
+            x += 94 * _s;
+            if (Btn(new Rect(x, y + 2 * _s, 36 * _s, 36 * _s), "+", false)) d = 1;
+            x += 36 * _s + 30 * _s;
+            return d;
+        }
+
         private void DrawBackups(Rect view, List<SaveBackups.Backup> backups)
         {
-            Lbl(new Rect(view.x, view.y, view.width - 290 * _s, 44 * _s),
-                "Your saves are copied before this menu changes mods (once every few minutes, the last 10 kept).", Tint(_wrapSmall, CMuted));
+            // 1.16.1: what the backups take, and the limits that keep it down.
+            var autos = 0;
+            foreach (var b in backups) if (b.Auto) autos++;
+            var sureAll = _confirmDelete == "*" && Time.unscaledTime < _confirmUntil;
+            var delText = sureAll ? "Sure?" : "Delete automatic backups";
+            var delW = autos > 0 ? Mathf.Max(_bold.CalcSize(Lang.C("Delete automatic backups")).x + 40 * _s, 160 * _s) : 0;
+            var right = 270 * _s + (autos > 0 ? delW + 10 * _s : 0);
+            Lbl(new Rect(view.x, view.y, view.width - right - 20 * _s, 64 * _s),
+                Lang.T("Your saves are backed up before this menu changes mods, when a save has changed since the last backup. A backup holds only the saves that changed.")
+                + " " + Lang.F("All backups together take {0}.", SaveBackups.SizeText(SaveBackups.TotalSize)), Tint(_wrapSmall, CMuted));
             if (Btn(new Rect(view.xMax - 270 * _s, view.y, 270 * _s, 42 * _s), "Back up my saves now", true))
             {
                 var b = SaveBackups.Create("by hand", false);
                 Toast(b != null ? $"Backed up {b.Files} save file(s)." : "There were no saves to back up.", b != null);
             }
-            var top = view.y + 58 * _s;
+            if (autos > 0 && Btn(new Rect(view.xMax - right, view.y, delW, 42 * _s), delText, sureAll))
+            {
+                if (!sureAll) { _confirmDelete = "*"; _confirmRestore = null; _confirmUntil = Time.unscaledTime + 3f; }
+                else
+                {
+                    _confirmDelete = null;
+                    var n = SaveBackups.DeleteAutomatic();
+                    Toast($"Deleted {n} automatic backup(s).", true);
+                    return;
+                }
+            }
+
+            var cy = view.y + 72 * _s;
+            var x = view.x;
+            var on = SaveBackups.Automatic;
+            var tw = _small.CalcSize(Lang.C("Back up automatically")).x + 70 * _s;
+            if (Toggle(new Rect(x, cy + 5 * _s, tw, 30 * _s), on, "Back up automatically"))
+            { _host.BackupsOn.Value = !on; _host.Config.Save(); }
+            x += tw + 36 * _s;
+            var changed = false;
+            int keep = SaveBackups.Keep;
+            var d = Stepper(ref x, cy, "Automatic backups kept", keep.ToString());
+            if (d != 0 && keep + d >= 1 && keep + d <= 50) { _host.BackupsKept.Value = keep + d; changed = true; }
+            int mb = SaveBackups.MaxMb;
+            d = Stepper(ref x, cy, "Most space", mb == 0 ? Lang.T("No limit") : mb >= 1000 && mb % 1000 == 0 ? (mb / 1000) + " GB" : mb + " MB");
+            if (d != 0)
+            {
+                // (the next step up or down; "no limit" is past the biggest)
+                int to = mb;
+                if (mb == 0) to = d < 0 ? SpaceSteps[SpaceSteps.Length - 1] : 0;
+                else if (d > 0) { to = 0; foreach (var step in SpaceSteps) if (step > mb) { to = step; break; } }
+                else { to = SpaceSteps[1]; for (var i = SpaceSteps.Length - 1; i >= 1; i--) if (SpaceSteps[i] < mb) { to = SpaceSteps[i]; break; } }
+                if (to != mb) { _host.BackupsMaxMb.Value = to; changed = true; }
+            }
+            if (changed) { _host.Config.Save(); _limitsDueAt = Time.unscaledTime + 3f; }
+            // (a moment after the last press, so stepping through the values removes nothing on the way)
+            if (_limitsDueAt > 0 && Time.unscaledTime > _limitsDueAt && Event.current.type == EventType.Repaint)
+            {
+                _limitsDueAt = 0;
+                SaveBackups.ApplyLimits();
+            }
+
+            var top = cy + 54 * _s;
             if (backups.Count == 0) { Lbl(new Rect(view.x, top, view.width, 40 * _s), "No backups yet.", Tint(_body, CMuted)); return; }
             const float rowH = 70, gap = 8;
             var inner = BeginScroll(new Rect(view.x, top, view.width, view.yMax - top), backups.Count * (rowH + gap) * _s);
             var y = inner.y;
+            SaveBackups.Backup remove = null;
             foreach (var b in backups)
             {
                 var row = new Rect(0, y, inner.width, rowH * _s);
                 Fill(row, row.Contains(Event.current.mousePosition) ? CCard : CRow, 12 * _s);
                 Lbl(new Rect(row.x + 20 * _s, row.y + 8 * _s, row.width * 0.6f, 28 * _s), b.Time.ToString("d MMM yyyy  HH:mm"), _bold);
                 Lbl(new Rect(row.x + 20 * _s, row.y + 38 * _s, row.width * 0.6f, 24 * _s),
-                    (b.Reason.Length > 0 ? b.Reason + "  ·  " : "") + $"{b.Files} file(s), {b.Size / 1024} KB", Tint(_small, CMuted));
+                    (b.Reason.Length > 0 ? b.Reason + "  ·  " : "") + $"{b.Files} file(s), {SaveBackups.SizeText(b.Size)}", Tint(_small, CMuted));
                 var sure = _confirmRestore == b.Dir && Time.unscaledTime < _confirmUntil;
                 var rb = new Rect(row.xMax - 14 * _s - 150 * _s, row.y + 15 * _s, 150 * _s, 40 * _s);
                 if (Btn(rb, sure ? "Sure?" : "Restore", sure))
                 {
                     if (!_host.AtMainMenu) Toast("Go back to the main menu first: the game has a save open.", false);
-                    else if (!sure) { _confirmRestore = b.Dir; _confirmUntil = Time.unscaledTime + 3f; }
+                    else if (!sure) { _confirmRestore = b.Dir; _confirmDelete = null; _confirmUntil = Time.unscaledTime + 3f; }
                     else
                     {
                         _confirmRestore = null;
@@ -2311,9 +2382,20 @@ namespace NomadModManager
                     }
                 }
                 if (Btn(new Rect(rb.x - 108 * _s, rb.y, 100 * _s, 40 * _s), "Folder", false)) OpenFolder(b.Dir);
+                var sureDel = _confirmDelete == b.Dir && Time.unscaledTime < _confirmUntil;
+                if (Btn(new Rect(rb.x - 216 * _s, rb.y, 100 * _s, 40 * _s), sureDel ? "Sure?" : "Delete", sureDel))
+                {
+                    if (!sureDel) { _confirmDelete = b.Dir; _confirmRestore = null; _confirmUntil = Time.unscaledTime + 3f; }
+                    else { _confirmDelete = null; remove = b; }
+                }
                 y += (rowH + gap) * _s;
             }
             EndScroll();
+            if (remove != null)
+            {
+                SaveBackups.Delete(remove);
+                Toast("Deleted the backup.", true);
+            }
         }
 
         // ==================================================================

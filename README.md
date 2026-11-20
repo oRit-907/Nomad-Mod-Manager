@@ -94,7 +94,7 @@ libwebp and libsharpyuv are Google's official builds (BSD 3-Clause), from the `I
 
 - **Multiplayer**: in a lobby, every player who has this menu shares their mod list on their lobby membership (an EOS member attribute, like the game's display name), and everyone's mods are compared: what you're missing (with Install), what's on another version, what they're missing. Nothing is sent over the game's connection, so players without the menu aren't affected. Share codes ("NMM:…", copied to the clipboard) compare mod lists outside a lobby.
 - **Conflict finder**: running mods that rewrite the same game method (Harmony prefixes/transpilers from two mods) are flagged on their Installed rows.
-- **Save backups**: saves (Unity's persistent data folder) are copied to `BepInEx\plugins\NomadModManager\data\save-backups` before the menu changes mods (at most every 5 minutes, last 10 kept), with Restore (main menu only; the current saves are backed up first).
+- **Save backups**: saves (Unity's persistent data folder) are copied to `BepInEx\plugins\NomadModManager\data\save-backups` before the menu changes mods (at most every 5 minutes; since 1.16.1 only the files that changed, and only a set number and size of automatic backups, see `Plugin/BackupStore.cs`), with Restore (main menu only; the current saves are backed up first).
 - **Activity page**: what the menu did (`activity.log`), this session's errors and warnings from LogOutput.log, and the save backups.
 - **Settings**: a find box and Reset all.
 - **Languages**: the menu follows the game's language (config `General/Language`), using Nomad Mod Downloader's translations plus `Lang/*.json`.

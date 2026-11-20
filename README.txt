@@ -38,7 +38,7 @@ If you want to see upcoming features early, join the [url=https://discord.gg/nom
 [*][b]Mod settings[/b]: change any mod's settings while you play, with search and reset.
 [*][b]Settings page[/b]: the Mods menu's own settings (open key, language, start-up and more) in the same editor.
 [*][b]Profiles[/b]: save sets of mods and switch between them in one go.
-[*][b]Save backups[/b]: your saves are backed up before every change, with one-click restore.
+[*][b]Save backups[/b]: your saves are backed up before the menu changes mods, with one-click restore. Only what changed is kept, within a size you set.
 [*][b]Export logs for mod devs[/b]: one zip on your Desktop with the BepInEx and Unity logs, every mod with its version and source, and recent errors. Your Windows user name is hidden.
 [*][b]Report a bug[/b] on any mod, straight to its Bugs page.
 [*][b]BepInEx is protected[/b]: its own parts can't be switched off, removed or updated from the menu, so one click can't break every mod.
@@ -95,6 +95,15 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.16.1[/b][/size]
+[list]
+[*][b]Save backups take far less room[/b]: a backup now holds only the saves that changed since the one before it, and no automatic backup is made when no save has changed. Until now every backup was a whole copy of your saves and the last ten were kept, which grew to several GB for players with big saves.
+[*][b]Limits you can set[/b] (Activity, Save backups; also in Settings): automatic backups on or off, how many are kept (5), and the most room they may take (500 MB). The oldest go first. The newest one and the backups you made yourself always stay.
+[*][b]The old pile is cleaned up for you[/b]: the first time this version starts, the automatic backups older versions left are cut down to those limits, in the background.
+[*]The Save backups page shows how much room the backups take, and has [b]Delete[/b] on every backup and [b]Delete automatic backups[/b].
+[*]Moving to Ignite Loader no longer copies the save backups over (that made a second pile).
+[*]The Activity page no longer reads every backup file many times a second while it is open.
+[/list]
 [size=3][b]1.16.0[/b][/size]
 [list]
 [*][b]One download for BepInEx 5 and Ignite Loader[/b]: the same files run on both. On Ignite Loader the menu works in IgniteLoader\plugins, \patchers and \config, shows the loader and its version, reads its log, and puts its own files in IgniteLoader\plugins\NomadModManager\data.

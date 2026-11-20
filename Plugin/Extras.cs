@@ -103,23 +103,30 @@ namespace NomadModManager
     // Save backups
 
     /// <summary>
-    /// Copies Nomad Drive's saves (Unity's persistent data folder) to BepInEx\NomadModManager\save-backups before the
-    /// menu changes mods, and puts a copy back on request. Plain folders: the game's Mono has no zip support.
+    /// Backs up Nomad Drive's saves (Unity's persistent data folder) to the data folder's save-backups before the menu
+    /// changes mods, and puts a backup back on request. 1.16.1: a backup holds only what changed, unchanged saves
+    /// aren't backed up again, and the backups stay under a number and a size (see <see cref="BackupStore"/>).
     /// </summary>
     internal static class SaveBackups
     {
-        public const int Keep = 10;
         private static DateTime _last = DateTime.MinValue;
 
         public static string SaveDir => Application.persistentDataPath;
         public static string BackupDir => Path.Combine(Pending.Dir(Paths.GameRootPath), "save-backups");
 
+        // The settings (file ModManager, section Backups).
+        public static bool Automatic => ModManagerPlugin.I?.BackupsOn?.Value ?? true;
+        public static int Keep => Mathf.Clamp(ModManagerPlugin.I?.BackupsKept?.Value ?? 5, 1, 50);
+        public static int MaxMb => Mathf.Clamp(ModManagerPlugin.I?.BackupsMaxMb?.Value ?? 500, 0, 100000);
+        private static long MaxBytes => MaxMb * 1024L * 1024L;
+
         internal sealed class Backup
         {
             public string Dir = "", Reason = "";
             public DateTime Time;
-            public long Size;
-            public int Files;
+            public long Size;       // what this backup's own folder holds (the saves that had changed)
+            public int Files;       // the save files it covers
+            public bool Auto;
         }
 
         private static bool Skip(string rel)
@@ -132,43 +139,51 @@ namespace NomadModManager
                    || top.Equals("ShaderCache", StringComparison.OrdinalIgnoreCase) || top.Equals("il2cpp", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static IEnumerable<(string Full, string Rel)> SaveFiles(string root)
+        private static List<(string Full, string Rel)> SaveFiles(string root)
         {
-            if (!Directory.Exists(root)) yield break;
+            var list = new List<(string, string)>();
+            if (!Directory.Exists(root)) return list;
             foreach (var f in Directory.GetFiles(root, "*", SearchOption.AllDirectories))
             {
                 var rel = f.Substring(root.Length).TrimStart('\\', '/');
-                if (!Skip(rel)) yield return (f, rel);
+                if (!Skip(rel)) list.Add((f, rel));
             }
+            return list;
         }
 
-        /// <summary>Backs up the saves, at most once every few minutes for automatic ones (several changes in a row = one backup).</summary>
+        public static string SizeText(long bytes) =>
+            bytes >= 1024L * 1024 * 1024 ? (bytes / (1024.0 * 1024 * 1024)).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " GB"
+            : bytes >= 1024 * 1024 ? (bytes / (1024 * 1024)) + " MB"
+            : Math.Max(bytes > 0 ? 1 : 0, bytes / 1024) + " KB";
+
+        /// <summary>
+        /// Backs up the saves. An automatic one: at most once every few minutes (several changes in a row = one backup),
+        /// only when a save changed since the last backup, and not at all when automatic backups are switched off.
+        /// </summary>
         public static Backup Create(string reason, bool automatic)
         {
             try
             {
-                if (automatic && (DateTime.Now - _last).TotalMinutes < 5) return null;
-                var files = SaveFiles(SaveDir).ToList();
-                if (files.Count == 0) return null;
-                var stamp = DateTime.Now;
-                var dir = Path.Combine(BackupDir, stamp.ToString("yyyy-MM-dd_HH-mm-ss") + (automatic ? "_auto" : ""));
-                for (var n = 2; Directory.Exists(dir); n++) dir = Path.Combine(BackupDir, stamp.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + n);
+                if (automatic && (!Automatic || (DateTime.Now - _last).TotalMinutes < 5)) return null;
+                string saves = SaveDir, backups = BackupDir;      // (read here: Unity's and the settings' values are the main thread's)
+                int keep = Keep;
+                long max = MaxBytes;
                 if (automatic)
                 {
-                    // 1.13.3: the automatic backup (before a mod is installed, removed or switched) is copied in the
+                    // 1.13.3: the automatic backup (before a mod is installed, removed or switched) is made in the
                     // background. Copying a few hundred save files stopped the game for a second each time (the
                     // stutter log showed 1.1 s at the click on Install); nothing waits for it, since changing a mod
                     // doesn't touch the saves.
                     _last = DateTime.Now;
-                    Activity.Add("Backed up your saves (" + reason + ")");
-                    string backups = BackupDir;
                     System.Threading.ThreadPool.QueueUserWorkItem(_ =>
                     {
                         try
                         {
-                            CopyFiles(files, dir);
-                            File.WriteAllText(Path.Combine(dir, ".backup-reason.txt"), reason);
-                            PruneIn(backups);
+                            var made = BackupStore.Create(backups, SaveFiles(saves), reason, true, DateTime.Now);
+                            if (made.Dir == null) return;       // (no saves, or none changed since the last backup)
+                            BackupStore.Prune(backups, keep, max);
+                            _stale = true;
+                            Activity.Add("Backed up your saves (" + reason + ")");
                         }
                         catch (Exception e)
                         {
@@ -177,11 +192,12 @@ namespace NomadModManager
                     });
                     return null;
                 }
-                long size = CopyFiles(files, dir);
-                File.WriteAllText(Path.Combine(dir, ".backup-reason.txt"), reason);
+                var m = BackupStore.Create(backups, SaveFiles(saves), reason, false, DateTime.Now);
+                _stale = true;
+                if (m.Dir == null) return null;
                 _last = DateTime.Now;
                 Activity.Add("Backed up your saves (" + reason + ")");
-                return new Backup { Dir = dir, Reason = reason, Time = stamp, Size = size, Files = files.Count };
+                return new Backup { Dir = m.Dir, Reason = reason, Time = DateTime.Now, Size = m.Size, Files = m.Files };
             }
             catch (Exception e)
             {
@@ -190,64 +206,80 @@ namespace NomadModManager
             }
         }
 
-        private static long CopyFiles(List<(string full, string rel)> files, string dir)
-        {
-            long size = 0;
-            foreach (var (full, rel) in files)
-            {
-                try
-                {
-                    var dest = Path.Combine(dir, rel);
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                    File.Copy(full, dest, true);
-                    size += new FileInfo(dest).Length;
-                }
-                catch (IOException) { /* in use by the game: skip it */ }
-            }
-            return size;
-        }
-
-        /// <summary>The oldest automatic backups go (file work only, so it can run off the main thread).</summary>
-        private static void PruneIn(string backups)
+        /// <summary>
+        /// At game start, in the background: the backups are brought within the limits. This is also what cuts down the
+        /// piles older versions left (ten whole copies of the saves, several GB for some players).
+        /// </summary>
+        public static void TidyAtStart()
         {
             try
             {
-                if (!Directory.Exists(backups)) return;
-                var autos = Directory.GetDirectories(backups).Where(d => d.EndsWith("_auto")).OrderByDescending(d =>
+                string backups = BackupDir;
+                int keep = Keep;
+                long max = MaxBytes;
+                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
                 {
-                    var reasonFile = Path.Combine(d, ".backup-reason.txt");
-                    return File.Exists(reasonFile) ? File.GetLastWriteTime(reasonFile) : Directory.GetCreationTime(d);
-                }).Skip(Keep).ToList();
-                foreach (var old in autos)
-                    try { Directory.Delete(old, true); } catch { }
+                    try
+                    {
+                        if (!Directory.Exists(backups)) return;
+                        long before = BackupStore.TotalSize(backups);
+                        int n = BackupStore.Prune(backups, keep, max);
+                        if (n == 0) return;
+                        long after = BackupStore.TotalSize(backups);
+                        _stale = true;
+                        var text = $"Removed {n} old automatic save backup(s): {SizeText(before)} before, {SizeText(after)} now";
+                        Activity.Add(text);
+                        try { ModManagerPlugin.Log?.LogMessage(text + "."); } catch { }
+                    }
+                    catch (Exception e)
+                    {
+                        try { ModManagerPlugin.Log?.LogWarning("Couldn't tidy the save backups: " + e.Message); } catch { }
+                    }
+                });
             }
             catch { }
         }
+
+        // The list is read from the disk every few seconds at most (it was read on every frame the Activity page was
+        // open: thousands of files for a player with a big pile).
+        private static List<Backup> _list;
+        private static long _total;
+        private static float _listedAt;
+        private static volatile bool _stale = true;
 
         public static List<Backup> List()
         {
+            if (_list != null && !_stale && Time.unscaledTime - _listedAt < 5f) return _list;
+            _stale = false;
+            _listedAt = Time.unscaledTime;
             var list = new List<Backup>();
+            long total = 0;
             try
             {
-                if (!Directory.Exists(BackupDir)) return list;
-                foreach (var d in Directory.GetDirectories(BackupDir))
-                {
-                    var b = new Backup { Dir = d, Time = Directory.GetCreationTime(d) };
-                    var reasonFile = Path.Combine(d, ".backup-reason.txt");
-                    if (File.Exists(reasonFile)) { b.Reason = File.ReadAllText(reasonFile).Trim(); b.Time = File.GetLastWriteTime(reasonFile); }
-                    foreach (var f in Directory.GetFiles(d, "*", SearchOption.AllDirectories))
-                        if (!f.EndsWith(".backup-reason.txt")) { b.Files++; b.Size += new FileInfo(f).Length; }
-                    list.Add(b);
-                }
+                var dir = BackupDir;
+                foreach (var b in BackupStore.List(dir))
+                    list.Add(new Backup { Dir = b.Dir, Reason = b.Reason, Time = b.Time, Size = b.Size, Files = b.Files, Auto = b.Auto });
+                total = BackupStore.TotalSize(dir);
             }
             catch { }
-            return list.OrderByDescending(b => b.Time).ToList();
+            _total = total;
+            return _list = list;
         }
 
-        private static void Prune()
+        /// <summary>The room all the backups take (as of the last <see cref="List"/>).</summary>
+        public static long TotalSize => _total;
+
+        /// <summary>After a setting changed: the backups are brought within the new limits.</summary>
+        public static void ApplyLimits()
         {
-            foreach (var old in List().Where(b => b.Dir.EndsWith("_auto")).Skip(Keep))
-                try { Directory.Delete(old.Dir, true); } catch { }
+            string backups = BackupDir;
+            int keep = Keep;
+            long max = MaxBytes;
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { if (BackupStore.Prune(backups, keep, max) > 0) Activity.Add("Removed old automatic save backups (the limits changed)"); } catch { }
+                _stale = true;
+            });
         }
 
         /// <summary>Puts a backup's files back (the current saves are backed up first, so this can be undone).</summary>
@@ -256,16 +288,8 @@ namespace NomadModManager
             try
             {
                 Create("before restoring the backup from " + b.Time.ToString("d MMM HH:mm"), false);
-                var n = 0;
-                foreach (var f in Directory.GetFiles(b.Dir, "*", SearchOption.AllDirectories))
-                {
-                    if (f.EndsWith(".backup-reason.txt")) continue;
-                    var rel = f.Substring(b.Dir.Length).TrimStart('\\', '/');
-                    var dest = Path.Combine(SaveDir, rel);
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                    File.Copy(f, dest, true);
-                    n++;
-                }
+                BackupStore.Restore(BackupDir, b.Dir, SaveDir);
+                _stale = true;
                 Activity.Add("Restored the save backup from " + b.Time.ToString("d MMM HH:mm"));
                 return null;
             }
@@ -274,7 +298,18 @@ namespace NomadModManager
 
         public static void Delete(Backup b)
         {
-            try { Directory.Delete(b.Dir, true); } catch { }
+            try { BackupStore.Remove(BackupDir, b.Dir); } catch { }
+            _stale = true;
+        }
+
+        /// <summary>Removes every automatic backup. Returns how many.</summary>
+        public static int DeleteAutomatic()
+        {
+            var n = 0;
+            try { n = BackupStore.RemoveAutomatic(BackupDir); } catch { }
+            _stale = true;
+            if (n > 0) Activity.Add($"Deleted {n} automatic save backup(s)");
+            return n;
         }
     }
 

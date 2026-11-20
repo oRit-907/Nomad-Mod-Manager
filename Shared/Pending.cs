@@ -89,7 +89,7 @@ namespace NomadModManager
 
         /// <summary>
         /// 1.16.0, Ignite Loader: the first time the Mods menu runs there and has no data folder yet, what it kept while
-        /// the game ran on BepInEx (sign-ins, profiles, the in-menu browser) is copied over. Copied, never moved, and
+        /// the game ran on BepInEx (sign-ins, profiles, the in-menu browser; not the save backups) is copied over. Copied, never moved, and
         /// nothing is deleted: the BepInEx folder stays whole for going back to it, and Ignite Loader hands file calls on
         /// "BepInEx\..." to its own folder, so "the old copy" may be this very folder (moving it into itself emptied it,
         /// in a test build). Every file is listed before the first one is copied for the same reason: once a folder
@@ -112,7 +112,13 @@ namespace NomadModManager
                     var d = todo[todo.Count - 1];
                     todo.RemoveAt(todo.Count - 1);
                     try { files.AddRange(Directory.GetFiles(d)); } catch { }
-                    try { todo.AddRange(Directory.GetDirectories(d)); } catch { }
+                    // 1.16.1: the save backups stay where they are (they were copied too: a second pile, GBs for some).
+                    try
+                    {
+                        foreach (var sub in Directory.GetDirectories(d))
+                            if (!(d == old && Path.GetFileName(sub).Equals("save-backups", StringComparison.OrdinalIgnoreCase))) todo.Add(sub);
+                    }
+                    catch { }
                 }
                 var from = Path.GetFullPath(old).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 int n = 0;
