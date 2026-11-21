@@ -11,24 +11,25 @@ using UnityEngine.Networking;
 namespace NomadModManager
 {
     /// <summary>
-    /// 1.10.0: gets Check BepInEx from nomaddrivemods.online (not GitHub any more): reads the site's /app answer, downloads
-    /// the installer with progress, checks it against the site's SHA-256, installs it quietly for this Windows user
-    /// (%LOCALAPPDATA%\Programs\Check BepInEx), registers it for the game and opens it.
+    /// 1.10.0: gets Check BepInEx from nomaddrivemods.online (not GitHub any more). 1.16.3: Check BepInEx is part of Nomad
+    /// Mod Downloader (5.0.0 on), so this gets that: reads the site's /app?app=downloader answer, downloads the app with
+    /// progress, checks it against the site's SHA-256, puts it in %LOCALAPPDATA%\Programs\Nomad Mod Downloader for this
+    /// Windows user, registers it for the game and opens it on its Check BepInEx page.
     /// Only ever runs when the player presses the button.
     /// </summary>
     internal static class AppFetcher
     {
         public const string Repo = "oRit-907/Nomad-Mod-Manager";   // the in-game browser's download (InGameBrowser): browser-vX.Y.Z releases
         public const string Site = "https://www.nomaddrivemods.online";
-        public const string ReleasesPage = Site + "/bepinex";
-        private const string Api = Site + "/app";
+        public const string ReleasesPage = Site + "/downloader";
+        private const string Api = Site + "/index.php?p=app&app=downloader";
 
         public static bool Busy { get; private set; }
         public static float Progress { get; private set; }
         public static string Status { get; private set; } = "";
         public static long Size { get; private set; }
 
-        public static string InstallDir => Path.Combine(Path.Combine(Environment.GetEnvironmentVariable("LOCALAPPDATA") ?? Paths.GameRootPath, "Programs"), "Check BepInEx");
+        public static string InstallDir => Path.Combine(Path.Combine(Environment.GetEnvironmentVariable("LOCALAPPDATA") ?? Paths.GameRootPath, "Programs"), "Nomad Mod Downloader");
 
         public static void Start(MonoBehaviour host, Action<bool, string> done)
         {
@@ -54,7 +55,7 @@ namespace NomadModManager
                 {
                     var rel = JObject.Parse(req.downloadHandler.text);
                     version = (string)rel["version"];
-                    var f = rel["files"]?["setup"] as JObject;
+                    var f = rel["files"]?["exe"] as JObject;
                     if (f != null)
                     {
                         url = (string)f["url"];
@@ -66,15 +67,15 @@ namespace NomadModManager
             }
             if (string.IsNullOrEmpty(url) || !url.StartsWith(Site + "/", StringComparison.OrdinalIgnoreCase) || sha == null || sha.Length != 64)
             {
-                Finish(done, false, "The website has no Check BepInEx download right now.");
+                Finish(done, false, "The website has no Nomad Mod Downloader download right now.");
                 yield break;
             }
 
             Size = size;
-            var temp = Path.Combine(Path.GetTempPath(), "CheckBepInEx-Setup-" + version + ".exe");
+            var temp = Path.Combine(Path.GetTempPath(), "NomadModDownloader-" + version + ".exe");
             try { if (File.Exists(temp)) File.Delete(temp); } catch { }
 
-            Status = $"Downloading Check BepInEx {version}…";
+            Status = $"Downloading Nomad Mod Downloader {version}…";
             using (var req = new UnityWebRequest(url, "GET"))
             {
                 req.downloadHandler = new DownloadHandlerFile(temp, false);
@@ -98,28 +99,33 @@ namespace NomadModManager
             }
             catch (Exception e) { Finish(done, false, "Couldn't check the download: " + e.Message); yield break; }
 
-            // Install quietly for this user, then register and open it.
-            Status = $"Installing Check BepInEx {version}…";
-            Process setup;
-            try { setup = Process.Start(new ProcessStartInfo(temp, "/S") { UseShellExecute = false, CreateNoWindow = true }); }
-            catch (Exception e) { Finish(done, false, "Couldn't start the installer: " + e.Message); yield break; }
-            var waited = 0f;
-            while (setup != null && !setup.HasExited && waited < 180f) { waited += Time.unscaledDeltaTime; yield return null; }
-            try { File.Delete(temp); } catch { }
-            var target = Path.Combine(InstallDir, "CheckBepInEx.exe");
-            if (!File.Exists(target)) { Finish(done, false, "The installer didn't finish."); yield break; }
+            // Put it in place for this user (one exe, nothing to install), then register and open it.
+            Status = $"Setting up Nomad Mod Downloader {version}…";
+            var target = Path.Combine(InstallDir, "NomadModDownloader.exe");
+            try
+            {
+                Directory.CreateDirectory(InstallDir);
+                if (File.Exists(target)) File.Delete(target);
+                File.Move(temp, target);
+            }
+            catch (Exception e)
+            {
+                try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+                Finish(done, false, "Couldn't put the app in " + InstallDir + ": " + e.Message);
+                yield break;
+            }
             try { Downloader.Register(target); } catch { }
-            ModManagerPlugin.Log.LogMessage($"Installed Check BepInEx {version} from nomaddrivemods.online to {target}");
+            ModManagerPlugin.Log.LogMessage($"Installed Nomad Mod Downloader {version} from nomaddrivemods.online to {target}");
 
             Progress = 1;
-            Finish(done, Downloader.Show(), $"Check BepInEx {version} is installed in {InstallDir}.");
+            Finish(done, Downloader.ShowCheck(), $"Nomad Mod Downloader {version} is in {InstallDir}. Its Check BepInEx page is open.");
         }
 
         private static void Finish(Action<bool, string> done, bool ok, string message)
         {
             Busy = false;
             Status = message;
-            if (!ok) ModManagerPlugin.Log.LogWarning("Getting Check BepInEx: " + message);
+            if (!ok) ModManagerPlugin.Log.LogWarning("Getting Nomad Mod Downloader: " + message);
             try { done?.Invoke(ok, message); } catch { }
         }
     }

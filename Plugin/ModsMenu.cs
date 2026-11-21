@@ -662,8 +662,8 @@ namespace NomadModManager
                 if (Downloader.IsStoreCopy)
                 {
                     // The Microsoft Store doesn't have the app any more, so that copy never updates: get the EXE.
-                    Application.OpenURL("https://nomaddrivemods.online/index.php?p=bepinex");
-                    Toast("Your Check BepInEx is the old Microsoft Store copy, which doesn't get updates any more. Download the EXE from the page that just opened, then uninstall the Store copy.", false);
+                    Application.OpenURL("https://nomaddrivemods.online/index.php?p=downloader");
+                    Toast("Your app is the old Microsoft Store copy, which doesn't get updates any more. Download Nomad Mod Downloader (it has Check BepInEx built in) from the page that just opened, then uninstall the Store copy.", false);
                 }
                 else if (!Downloader.ShowCheck()) GetDownloader();
             }
@@ -1076,13 +1076,13 @@ namespace NomadModManager
             return string.Join("\n", parts.ToArray());
         }
 
-        /// <summary>Installs Check BepInEx from nomaddrivemods.online and opens it.</summary>
+        /// <summary>Gets Nomad Mod Downloader (Check BepInEx is part of it) from nomaddrivemods.online and opens it.</summary>
         private void GetDownloader()
         {
             if (Edition.Nexus) { Application.OpenURL(Edition.BepInExPage); Toast("Opened BepInEx for Nomad Drive on Nexus Mods in your web browser.", true); return; }
             if (AppFetcher.Busy) return;
-            Toast("Getting Check BepInEx from nomaddrivemods.online…", true);
-            AppFetcher.Start(_host, (ok, msg) => Toast(ok ? msg : msg + " You can also get it from nomaddrivemods.online (How to install › Get BepInEx): " + AppFetcher.ReleasesPage, ok));
+            Toast("Getting Nomad Mod Downloader (with Check BepInEx) from nomaddrivemods.online…", true);
+            AppFetcher.Start(_host, (ok, msg) => Toast(ok ? msg : msg + " You can also get it from nomaddrivemods.online (How to install › Mod Downloader): " + AppFetcher.ReleasesPage, ok));
         }
 
         private void ProgressBar(Rect r, float p)
@@ -1211,14 +1211,14 @@ namespace NomadModManager
                 fix = Edition.Nexus ? "BepInEx on Nexus" : "Open Check BepInEx";
                 action = OpenCheck;
                 return Edition.Nexus ? "Some mods use Unity code that Nomad Drive's build left out. Unity Compatibility, part of BepInEx for Nomad Drive on Nexus Mods, puts it back."
-                    : "Some mods use Unity code that Nomad Drive's build left out. Unity Compatibility (set up by Check BepInEx) puts it back.";
+                    : "Some mods use Unity code that Nomad Drive's build left out. Unity Compatibility (set up by Nomad Mod Downloader's Check BepInEx page) puts it back.";
             }
             if (Bep.Major == 5 && !LoaderPaths.IsIgnite && File.Exists(Path.Combine(Path.Combine(Paths.GameRootPath, "BepInEx"), "core\\BepInEx.Core.dll")))
             {
                 fix = Edition.Nexus ? "BepInEx on Nexus" : "Open Check BepInEx";
                 action = OpenCheck;
                 return Edition.Nexus ? "Your game has BepInEx 6, which this Mods menu doesn't support. Install BepInEx 5 for Nomad Drive from Nexus Mods (your mods and settings are kept)."
-                    : "Your game has BepInEx 6, which Nomad Mods doesn't support any more. In Check BepInEx, Fix all replaces it with BepInEx 5: your mods and settings are kept.";
+                    : "Your game has BepInEx 6, which Nomad Mods doesn't support any more. On Nomad Mod Downloader's Check BepInEx page, Fix all replaces it with BepInEx 5: your mods and settings are kept.";
             }
             return null;
         }
@@ -1226,7 +1226,7 @@ namespace NomadModManager
         private void OpenCheck()
         {
             if (Edition.Nexus) { GetDownloader(); return; }
-            if (Downloader.ShowCheck()) Toast("Opened Check BepInEx.", true);
+            if (Downloader.ShowCheck()) Toast("Opened Check BepInEx in Nomad Mod Downloader.", true);
             else GetDownloader();
         }
 

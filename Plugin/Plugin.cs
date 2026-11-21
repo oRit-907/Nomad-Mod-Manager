@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.16.2";
+        public const string Version = "1.16.3";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;

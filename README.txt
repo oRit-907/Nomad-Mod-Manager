@@ -95,6 +95,10 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.16.3[/b][/size]
+[list]
+[*][b]Check BepInEx is part of Nomad Mod Downloader now[/b], so you only need one app. The [b]Check BepInEx[/b] button opens it on its Check BepInEx page, and gets Nomad Mod Downloader from nomaddrivemods.online when you don't have it yet.
+[/list]
 [size=3][b]1.16.2[/b][/size]
 [list]
 [*][b]Interactions work again when you join a multiplayer game[/b]: the multiplayer kick protection could mistake the game's own code (Assembly-CSharp, EvilCore) for a mod and hold back its Commands. You stayed connected and could walk around, but nothing you used worked. The game's own code is never treated as a mod now. Thanks to the player who tracked this down.
