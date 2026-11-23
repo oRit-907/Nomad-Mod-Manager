@@ -72,6 +72,22 @@ namespace NomadModManager
         /// unstripped .NET/Unity files that break the game's input): never offered in Browse mods. BepInEx is set up by
         /// Nomad Mod Downloader instead.
         /// </summary>
+        /// <summary>1.17.0: authors whose mods are never offered in Browse mods (built in, plus Browse/HiddenAuthors in the config).</summary>
+        private static readonly string[] HiddenAuthorsBuiltIn = { "changeYYL" };
+
+        public static bool IsHiddenAuthor(string author)
+        {
+            author = (author ?? "").Trim();
+            if (author.Length == 0) return false;
+            foreach (var a in HiddenAuthorsBuiltIn) if (string.Equals(a, author, StringComparison.OrdinalIgnoreCase)) return true;
+            foreach (var a in (ModManagerPlugin.I?.HiddenAuthors?.Value ?? "").Split(',', ';'))
+                if (a.Trim().Length > 0 && string.Equals(a.Trim(), author, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>Not offered in Browse mods: a mod loader or BepInEx add-on, or a hidden author's mod.</summary>
+        public static bool HiddenFromBrowse(string name, string author) => IsBepInExPackName(name) || IsHiddenAuthor(author);
+
         public static bool IsBepInExPackName(string n)
         {
             n = (n ?? "").Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");

@@ -128,6 +128,8 @@ namespace NomadModManager
                 new BepInEx.Configuration.ConfigDescription("The most room the automatic save backups may take together, in MB (0 = no limit). When they take more, the oldest are removed; the newest one always stays. Backups you made yourself don't count and are never removed.", new BepInEx.Configuration.AcceptableValueRange<int>(0, 100000)));
             SaveBackups.TidyAtStart();
             // 1.17.0: the My mods page, the Performance page and Discord.
+            HiddenAuthors = Config.Bind("Browse", "HiddenAuthors", "",
+                "Authors whose mods are never shown in Browse mods (a comma between names, any capitals). Some are hidden already.");
             AuthorNames = Config.Bind("Author", "MyNames", "",
                 "Your author names on the website and on Nexus Mods, for the My mods page (a comma between names, any capitals). Empty: your website account's name.");
             PerfMaxMinutes = Config.Bind("Performance", "MostMinutes", 15,
@@ -172,7 +174,7 @@ namespace NomadModManager
         }
 
         internal ConfigEntry<bool> EndOnQuit;
-        internal ConfigEntry<string> AuthorNames, DiscordAppId, DiscordImage;
+        internal ConfigEntry<string> AuthorNames, DiscordAppId, DiscordImage, HiddenAuthors;
         internal ConfigEntry<int> PerfMaxMinutes;
         internal ConfigEntry<bool> DiscordOn, DiscordShowMods, DiscordShowGame, DiscordButtons;
         internal ConfigEntry<bool> BackupsOn;

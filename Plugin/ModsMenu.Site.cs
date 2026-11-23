@@ -28,7 +28,7 @@ namespace NomadModManager
                 if (err != null) { _siteError = err; return; }
                 _sitePage = page;
                 // BepInEx packs are never offered here (see ModEntry.IsBepInExPackName).
-                _siteHidden += list.RemoveAll(m => ModEntry.IsBepInExPackName(m.Name));
+                _siteHidden += list.RemoveAll(m => ModEntry.HiddenFromBrowse(m.Name, m.Author));
                 _siteTotal = Math.Max(0, total - _siteHidden);
                 if (counts != null) _siteCounts = counts;
                 _siteResults.AddRange(list.Where(m => _siteResults.All(r => r.Id != m.Id)));

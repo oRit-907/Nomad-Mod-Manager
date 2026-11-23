@@ -870,6 +870,7 @@ namespace NomadModManager
         {
             // Mod loaders and BepInEx packs aren't offered here, even from an old list (see ModEntry.IsBepInExPackName).
             if (ModEntry.IsBepInExPackName(m.Name)) { Toast(m.Name + " isn't offered in the Mods menu: your mod loader is set up by Nomad Mod Downloader.", false); return; }
+            if (ModEntry.IsHiddenAuthor(m.Author)) { Toast(m.Name + " isn't offered in the Mods menu.", false); return; }
             _nexusDetailTab = 0; _nexusViewer = -1;
             _browseScroll = _scrollY;
             _scrollY = 0;
