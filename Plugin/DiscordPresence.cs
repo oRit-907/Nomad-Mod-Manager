@@ -22,7 +22,7 @@ namespace NomadModManager
     internal static class DiscordPresence
     {
         /// <summary>The Discord application ("Nomad Drive") whose name shows as "Playing …". The config can set another.</summary>
-        public const string BuiltInAppId = "";
+        public const string BuiltInAppId = "1574333064459583528";
 
         public static string Status { get; private set; } = "Off";
         public static bool Connected { get; private set; }
