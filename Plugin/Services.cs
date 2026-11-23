@@ -94,7 +94,7 @@ namespace NomadModManager
             yield return Query(q, vars, d => data = d, e => err = e);
             if (err != null) { done(null, 0, err); yield break; }
             var list = (data?["mods"]?["nodes"] as JArray ?? new JArray()).Select(Parse).ToList();
-            foreach (var m in list) if (m.Downloads == 0) m.Hidden = true;
+            foreach (var m in list) if (m.Downloads == 0 || ModEntry.IsBepInExPackName(m.Name)) m.Hidden = true;
 
             // Mods with no file to download, or whose current files are all programs (.exe/.msi): one request for the whole page.
             var check = list.Where(m => !m.Hidden).Select(m => m.Id).ToList();

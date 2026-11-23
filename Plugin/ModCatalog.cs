@@ -67,6 +67,18 @@ namespace NomadModManager
                    || n.Equals("BepInExPack", StringComparison.OrdinalIgnoreCase) || n.IndexOf("BepInExPack", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        /// <summary>
+        /// 1.17.0: BepInEx packs other people put up (Thunderstore-style "BepInExPack_NomadDrive" and the like, often with
+        /// unstripped .NET/Unity files that break the game's input): never offered in Browse mods. BepInEx is set up by
+        /// Nomad Mod Downloader instead.
+        /// </summary>
+        public static bool IsBepInExPackName(string n)
+        {
+            n = (n ?? "").Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
+            return n.IndexOf("BepInExPack", StringComparison.OrdinalIgnoreCase) >= 0
+                   || n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase) && n.IndexOf("Pack", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         public readonly List<string> Dlls = new List<string>();
         public readonly List<string> OffDlls = new List<string>();
         public readonly List<string> Guids = new List<string>();

@@ -12,20 +12,24 @@ namespace NomadModManager
     /// </summary>
     internal sealed partial class ModsMenu
     {
+        private int _siteHidden;
+
         private void RunSiteSearch(bool more)
         {
             if (_siteLoading) return;
             _siteLoading = true;
             _siteSearched = true;
             _siteError = null;
-            if (!more) { _siteResults.Clear(); _sitePage = 0; _scrollY = 0; }
+            if (!more) { _siteResults.Clear(); _sitePage = 0; _scrollY = 0; _siteHidden = 0; }
             var page = _sitePage + 1;
             _host.StartCoroutine(Community.Search(_siteSearch, _siteSort, _siteCategory, page, (list, total, counts, err) =>
             {
                 _siteLoading = false;
                 if (err != null) { _siteError = err; return; }
                 _sitePage = page;
-                _siteTotal = total;
+                // BepInEx packs are never offered here (see ModEntry.IsBepInExPackName).
+                _siteHidden += list.RemoveAll(m => ModEntry.IsBepInExPackName(m.Name));
+                _siteTotal = Math.Max(0, total - _siteHidden);
                 if (counts != null) _siteCounts = counts;
                 _siteResults.AddRange(list.Where(m => _siteResults.All(r => r.Id != m.Id)));
                 foreach (var m in list) _cat.SetSiteInfo(m);
