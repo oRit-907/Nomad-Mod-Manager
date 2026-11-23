@@ -114,7 +114,7 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [*][b]Performance page[/b]: how long each mod takes every frame (its Update, LateUpdate, FixedUpdate, OnGUI and Harmony patches), its share of the frame, its worst frame and how many stutters it was in, plus a list of the stutters with the mods in each. Start, Stop, Reset and Copy report.
 [*][b]My mods[/b], a dashboard for mod authors: your mods on this site and on Nexus with downloads, endorsements, new since last time and this week.
 [*][b]Discord Rich Presence[/b]: Playing Nomad Drive, with your mod count, what you're doing and a Get the mods button (Settings › Discord).
-[*]BepInEx packs other people upload (like BepInExPack_NomadDrive, which puts unstripped game files in) are no longer shown in Browse mods: BepInEx is set up by Nomad Mod Downloader.
+[*]Mod loaders are no longer shown in Browse mods: Ignite Loader, and BepInEx packs other people upload (like BepInExPack_NomadDrive, which puts unstripped game files in). Your loader is set up by Nomad Mod Downloader.
 [/list]
 [size=3][b]1.16.4[/b][/size]
 [list]

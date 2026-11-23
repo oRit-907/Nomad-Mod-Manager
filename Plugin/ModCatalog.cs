@@ -68,7 +68,7 @@ namespace NomadModManager
         }
 
         /// <summary>
-        /// 1.17.0: BepInEx packs other people put up (Thunderstore-style "BepInExPack_NomadDrive" and the like, often with
+        /// 1.17.0: mod loaders aren't offered in Browse mods: Ignite Loader, and BepInEx packs other people put up (Thunderstore-style "BepInExPack_NomadDrive" and the like, often with
         /// unstripped .NET/Unity files that break the game's input): never offered in Browse mods. BepInEx is set up by
         /// Nomad Mod Downloader instead.
         /// </summary>
@@ -76,7 +76,8 @@ namespace NomadModManager
         {
             n = (n ?? "").Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
             return n.IndexOf("BepInExPack", StringComparison.OrdinalIgnoreCase) >= 0
-                   || n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase) && n.IndexOf("Pack", StringComparison.OrdinalIgnoreCase) >= 0;
+                   || n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase) && n.IndexOf("Pack", StringComparison.OrdinalIgnoreCase) >= 0
+                   || n.StartsWith("IgniteLoader", StringComparison.OrdinalIgnoreCase);   // Ignite Loader too: set up by Nomad Mod Downloader
         }
 
         public readonly List<string> Dlls = new List<string>();
