@@ -183,7 +183,7 @@ namespace NomadModManager
             _scan.Stop();
             _browserQueue.Clear();
             _browserInstalling = false;
-            _cat.Refresh();
+            _cat.RefreshNow();
         }
 
         // ------------------------------------------------------------------ watching the Downloads folder
@@ -248,7 +248,7 @@ namespace NomadModManager
                 bool staged; string error = null;
                 try { staged = Community.InstallNexusFile(path, modId, file?.Id ?? fileId, name, author, version, original); }
                 catch (Exception ex) { staged = false; error = ex.Message; ModManagerPlugin.Log.LogWarning("Installing " + name + " from " + path + ": " + ex); }
-                _cat.Refresh();
+                _cat.RefreshNow();
                 if (error != null) { _browserStatus = $"Couldn't install {name}: {error}"; _browserStatusGood = false; yield break; }
 
                 _browserDone++;

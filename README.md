@@ -100,3 +100,22 @@ libwebp and libsharpyuv are Google's official builds (BSD 3-Clause), from the `I
 - **Languages**: the menu follows the game's language (config `General/Language`), using Nomad Mod Downloader's translations plus `Lang/*.json`.
 - **Endorse** opens the mod in Nomad Mod Downloader 2.7.2+ (logged in, Endorse highlighted).
 - The update count shows on the Mods button in the pause menu too, and Nexus is checked once at the main menu so the count is there before opening the menu.
+
+## New in 1.17.0
+
+- **Performance** page (`Plugin/PerfMonitor.cs`, `Plugin/ModsMenu.Performance.cs`): while measuring, every BepInEx plugin's
+  `Update`/`LateUpdate`/`FixedUpdate`/`OnGUI` and every Harmony prefix/postfix/finalizer it owns gets a timing
+  prefix + finalizer (Harmony id `akorit.nomadmodmanager.performance`, a few per frame so starting doesn't freeze). Times
+  add up per mod per frame (outermost call only), are rolled up at end of frame into a 2-second average, worst frame,
+  calls per frame and stutters (frames over 50 ms with the mods in them). Off until Start; taken off on Stop or after
+  `Performance/MostMinutes`. Transpilers and coroutines aren't timed.
+- **My mods** (`Plugin/AuthorStats.cs`, `Plugin/ModsMenu.Author.cs`): the player's own mods by author name
+  (`Author/MyNames`, else the website account's name) from the site's public API and Nexus GraphQL (author filter, with a
+  scan of the newest 400 Nomad Drive mods as a fallback). History in `data/author-stats.json` for "new since last time"
+  and "this week".
+- **Discord Rich Presence** (`Plugin/DiscordPresence.cs`): Discord's local IPC pipe (`\\.\pipe\discord-ipc-N`) on its
+  own thread, `SET_ACTIVITY` every few seconds when it changes. Settings in `Discord/*`; the application id is
+  `DiscordPresence.BuiltInAppId` (or `Discord/ApplicationId`).
+- Carries 1.16.4's freeze fixes (thumbnails off the game's thread, memoised text measuring, website installs off the
+  game's thread, cached folder listings).
+

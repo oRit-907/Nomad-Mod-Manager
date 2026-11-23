@@ -236,7 +236,7 @@ namespace NomadModManager
             done(name, author, version);
         }
 
-        private static IEnumerator Query(string query, JObject vars, Action<JToken> ok, Action<string> fail)
+        internal static IEnumerator Query(string query, JObject vars, Action<JToken> ok, Action<string> fail)
         {
             var body = new JObject { ["query"] = query };
             if (vars != null) body["variables"] = vars;
@@ -275,7 +275,7 @@ namespace NomadModManager
         private static NexusMod Classified(NexusMod m) { m.Category = Categories.Classify(m.Name, m.Summary); return m; }
 
         /// <summary>Decodes the HTML entities Nexus uses in names and summaries (System.Net.WebUtility is stripped from the game).</summary>
-        private static string Html(string s)
+        internal static string Html(string s)
         {
             if (string.IsNullOrEmpty(s) || s.IndexOf('&') < 0) return s;
             var sb = new StringBuilder(s.Length);
@@ -346,6 +346,8 @@ namespace NomadModManager
             _thumbGen++;
         }
 
+        private static int _thumbFrame = -1;
+
         private static IEnumerator LoadThumb(string url)
         {
             // After a refresh, ask past any cached copy of the picture.
@@ -358,9 +360,30 @@ namespace NomadModManager
                 if (req.result == UnityWebRequest.Result.Success)
                 {
                     var data = req.downloadHandler.data;
-                    if (WebP.IsWebP(data)) tex = WebP.Decode(data); // Nexus serves WebP
+                    if (WebP.IsWebP(data)) // Nexus serves WebP
+                    {
+                        // 1.16.4: decoded away from the game's thread and shrunk to thumbnail size; one texture a frame.
+                        int w = 0, h = 0;
+                        var job = System.Threading.Tasks.Task.Run(() => WebP.DecodeRaw(data, 640, out w, out h));
+                        while (!job.IsCompleted) yield return null;
+                        var raw = job.Status == System.Threading.Tasks.TaskStatus.RanToCompletion ? job.Result : null;
+                        while (Time.frameCount == _thumbFrame) yield return null;
+                        _thumbFrame = Time.frameCount;
+                        if (raw != null && w > 0 && h > 0)
+                        {
+                            try
+                            {
+                                tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+                                tex.LoadRawTextureData(raw);
+                                tex.Apply(false, true);
+                            }
+                            catch { if (tex != null) UnityEngine.Object.Destroy(tex); tex = null; }
+                        }
+                    }
                     else
                     {
+                        while (Time.frameCount == _thumbFrame) yield return null;
+                        _thumbFrame = Time.frameCount;
                         tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                         if (!tex.LoadImage(data)) { UnityEngine.Object.Destroy(tex); tex = null; }
                     }

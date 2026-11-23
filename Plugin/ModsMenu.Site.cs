@@ -29,7 +29,7 @@ namespace NomadModManager
                 if (counts != null) _siteCounts = counts;
                 _siteResults.AddRange(list.Where(m => _siteResults.All(r => r.Id != m.Id)));
                 foreach (var m in list) _cat.SetSiteInfo(m);
-                _cat.Refresh();
+                _cat.RefreshNow();
             }));
         }
 
@@ -96,7 +96,7 @@ namespace NomadModManager
             foreach (var c in chips)
             {
                 var label = c == null ? "All (" + all + ")" : c + " (" + (_siteCounts.TryGetValue(c, out var n) ? n : 0) + ")";
-                var w = _smallBold.CalcSize(Lang.C(label)).x + 30 * _s;
+                var w = CS(_smallBold, Lang.C(label)).x + 30 * _s;
                 if (cx + w > r.xMax) break;
                 var cr = new Rect(cx, y, w, 32 * _s);
                 var on = _siteCategory == c;
@@ -182,7 +182,7 @@ namespace NomadModManager
         private void SiteStatus(Rect r, SiteMod m, string loaderLabel = null)
         {
             var entry = SiteInstalledEntry(m);   // installed from here, or the same mod installed from Nexus
-            if (ModEntry.IsLoaderName(m.Name)) { if (Btn(r, loaderLabel ?? (_bold.CalcSize(Lang.C(InstallLabel(m))).x + 24 * _s <= r.width ? InstallLabel(m) : "Check"), false)) { if (!Downloader.ShowCheck()) Toast("Install or repair BepInEx with Check BepInEx (get it on nomaddrivemods.online), with the game closed.", true); } return; }
+            if (ModEntry.IsLoaderName(m.Name)) { if (Btn(r, loaderLabel ?? (CS(_bold, Lang.C(InstallLabel(m))).x + 24 * _s <= r.width ? InstallLabel(m) : "Check"), false)) { if (!Downloader.ShowCheck()) Toast("Install or repair BepInEx with Check BepInEx (get it on nomaddrivemods.online), with the game closed.", true); } return; }
             if (Community.Busy == m.Id) { StatusText(r, $"Installing… {Community.Progress * 100:0}%", CAccent); return; }
             if (entry != null && entry.UpdateStaged) { StatusText(r, entry.LiveLater ? "Press Reload to finish" : "Restart to finish", CWarn); return; }
             // Only when a version is out that's higher than the installed one (from here or Nexus, whichever is higher).
@@ -213,7 +213,7 @@ namespace NomadModManager
             // status shows when the mod is installed. Install puts the mod in now, with the website mods it needs;
             // Subscribe on its page does the same and keeps it updated.
             var by = r.yMax - 52 * _s;
-            float Need(string t) => Mathf.Max(120 * _s, _bold.CalcSize(Lang.C(t)).x + 36 * _s);
+            float Need(string t) => Mathf.Max(120 * _s, CS(_bold, Lang.C(t)).x + 36 * _s);
             if (ModEntry.IsLoaderName(m.Name))
             {
                 var label = InstallLabel(m);
@@ -290,7 +290,7 @@ namespace NomadModManager
                 _siteDetailsLoading = 0;
                 _siteDetails = d;
                 if (d == null) { Toast(err ?? "Couldn't load the mod's page.", false); CloseSiteDetails(); }
-                else { _cat.SetSiteInfo(d.Mod); _cat.Refresh(); }
+                else { _cat.SetSiteInfo(d.Mod); _cat.RefreshNow(); }
             }));
         }
 
@@ -371,7 +371,7 @@ namespace NomadModManager
             var reqText = req.Length > 0 ? req : d.Requires.Count > 0 ? "" : "Just BepInEx (Check BepInEx sets it up).";
             if (reqText.Length > 0)
             {
-                var reqH = Mathf.Max(24 * _s, Mathf.Min(_wrapSmall.CalcHeight(Lang.C(reqText), leftW), r.yMax - ly - 70 * _s));
+                var reqH = Mathf.Max(24 * _s, Mathf.Min(CH(_wrapSmall, Lang.C(reqText), leftW), r.yMax - ly - 70 * _s));
                 Lbl(new Rect(r.x, ly, leftW, reqH), reqText, req.Length > 0 ? _wrapSmall : Tint(_small, CMuted));
                 ly += reqH + 16 * _s;
             }
@@ -417,7 +417,7 @@ namespace NomadModManager
                         d.Subscribed = on;
                         Toast(on ? $"Subscribed to {m.Name}: it installs now and keeps itself up to date." : $"Unsubscribed from {m.Name}. It's removed if it was installed for the subscription.", true);
                         if (on && _siteMissingNexus.Count > 0) InstallNexusRequirements(_siteMissingNexus, m.Name);
-                        _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.Refresh(), force: true));
+                        _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.RefreshNow(), force: true));
                     }));
                 }
             }
@@ -449,7 +449,7 @@ namespace NomadModManager
             var tx = rx;
             for (var t = 0; t < tabs.Length; t++)
             {
-                var tw = _bold.CalcSize(Lang.C(tabs[t])).x + 30 * _s;
+                var tw = CS(_bold, Lang.C(tabs[t])).x + 30 * _s;
                 if (Btn(new Rect(tx, ty, tw, 36 * _s), tabs[t], false, _siteDetailTab == t)) { _siteDetailTab = t; _siteViewer = -1; _scrollY = 0; }
                 tx += tw + 8 * _s;
             }
@@ -468,9 +468,9 @@ namespace NomadModManager
             var wrapW = rw - 30 * _s;
             var desc = PlainText(d.Description);
             if (desc.Length == 0) desc = m.Summary.Length > 0 ? m.Summary : "No description.";
-            var descH = _wrap.CalcHeight(Lang.C(desc), wrapW);
+            var descH = CH(_wrap, Lang.C(desc), wrapW);
             var vers = d.Versions.Take(8).ToList();
-            var verH = vers.Select(v => 64 * _s + (v.Changelog.Length > 0 ? _wrapSmall.CalcHeight(Lang.C(PlainText(v.Changelog)), wrapW - 220 * _s) + 8 * _s : 0)).ToList();
+            var verH = vers.Select(v => 64 * _s + (v.Changelog.Length > 0 ? CH(_wrapSmall, Lang.C(PlainText(v.Changelog)), wrapW - 220 * _s) + 8 * _s : 0)).ToList();
             var inner = BeginScroll(view, descH + 60 * _s + verH.Sum() + vers.Count * 10 * _s + 20 * _s);
             var y = inner.y;
             Lbl(new Rect(0, y, wrapW, descH), desc, _wrap);
@@ -599,7 +599,7 @@ namespace NomadModManager
             {
                 Toast(msg, ok);
                 if (ok) afterOk?.Invoke();
-                _cat.Refresh();
+                _cat.RefreshNow();
             }));
         }
 
@@ -643,7 +643,7 @@ namespace NomadModManager
                 if (ok) done++;
                 if (_afterSiteInstall.TryGetValue(id, out var after)) { _afterSiteInstall.Remove(id); if (ok) after(); }
             }
-            _cat.Refresh();
+            _cat.RefreshNow();
             if (done > 0) Toast($"{verb} {done} mod(s) from {Community.HostName}." + (_cat.Mods.Any(m => m.UpdateStaged && m.LiveLater) ? " Press Reload to finish." : _cat.Mods.Any(m => m.UpdateStaged) ? " Restart to finish." : ""), true);
         }
     }

@@ -20,7 +20,7 @@ namespace NomadModManager
     public class ModManagerPlugin : BaseUnityPlugin
     {
         public const string Guid = "akorit.nomadmodmanager";
-        public const string Version = "1.16.3";
+        public const string Version = "1.17.0";
 
         internal static ModManagerPlugin I;
         internal static ManualLogSource Log;
@@ -127,6 +127,21 @@ namespace NomadModManager
             BackupsMaxMb = Config.Bind("Backups", "MostSpaceMB", 500,
                 new BepInEx.Configuration.ConfigDescription("The most room the automatic save backups may take together, in MB (0 = no limit). When they take more, the oldest are removed; the newest one always stays. Backups you made yourself don't count and are never removed.", new BepInEx.Configuration.AcceptableValueRange<int>(0, 100000)));
             SaveBackups.TidyAtStart();
+            // 1.17.0: the My mods page, the Performance page and Discord.
+            AuthorNames = Config.Bind("Author", "MyNames", "",
+                "Your author names on the website and on Nexus Mods, for the My mods page (a comma between names, any capitals). Empty: your website account's name.");
+            PerfMaxMinutes = Config.Bind("Performance", "MostMinutes", 15,
+                new BepInEx.Configuration.ConfigDescription("Measuring mod performance stops by itself after this many minutes (0 = only when you press Stop).", new BepInEx.Configuration.AcceptableValueRange<int>(0, 240)));
+            DiscordOn = Config.Bind("Discord", "ShowOnDiscord", true,
+                "Show that you're playing Nomad Drive on your Discord profile (Rich Presence), while the Discord app is running on this PC.");
+            DiscordShowMods = Config.Bind("Discord", "ShowModCount", true, "Show how many mods you play with (\"Playing with 11 mods\").");
+            DiscordShowGame = Config.Bind("Discord", "ShowWhatImDoing", true,
+                "Show whether you're on the road, hosting or in a multiplayer game, and how many players. Join codes are never shown.");
+            DiscordButtons = Config.Bind("Discord", "GetTheModsButton", true, "Show a \"Get the mods\" button on your Discord profile.");
+            DiscordAppId = Config.Bind("Discord", "ApplicationId", "",
+                "Advanced: the id of a Discord application to show as instead of the built-in one (its name is what shows after \"Playing\").");
+            DiscordImage = Config.Bind("Discord", "PictureKey", "logo",
+                "Advanced: the name of the picture (uploaded to the Discord application's Rich Presence art) shown next to the game. Empty: none.");
             Application.quitting += OnQuitting;
             // Sign in with Nexus stays hidden until Nexus registers the app (NexusAccount.ClientIdBuiltIn); a test build
             // (-p:TestKey=true) can set a client id in the config.
@@ -157,6 +172,9 @@ namespace NomadModManager
         }
 
         internal ConfigEntry<bool> EndOnQuit;
+        internal ConfigEntry<string> AuthorNames, DiscordAppId, DiscordImage;
+        internal ConfigEntry<int> PerfMaxMinutes;
+        internal ConfigEntry<bool> DiscordOn, DiscordShowMods, DiscordShowGame, DiscordButtons;
         internal ConfigEntry<bool> BackupsOn;
         internal ConfigEntry<int> BackupsKept, BackupsMaxMb;
         internal static ConfigEntry<string> NexusClientId;
@@ -198,6 +216,7 @@ namespace NomadModManager
         private void OnQuitting()
         {
             try { InGameBrowser.Close(); } catch { }
+            try { DiscordPresence.Shutdown(); } catch { }
             if (_quitWatch || EndOnQuit == null || !EndOnQuit.Value) return;
             _quitWatch = true;
             Logger.LogInfo("Game is quitting; will make sure it ends.");
@@ -280,12 +299,23 @@ namespace NomadModManager
             try { JoinDoctor.Tick(); } catch { }
             try { SafeJoin.Tick(); } catch { }
             try { Lang.Update(Language.Value); } catch { }
+            try { DiscordPresence.Tick(Catalog); } catch (Exception e) { if (!_discordWarned) { _discordWarned = true; Logger.LogWarning("Discord: " + e.Message); } }
             try { Menu.Tick(_openKey, OpenWithController.Value); }
             catch (Exception e) { Logger.LogWarning("Mods menu input: " + e.Message); }
         }
 
+        private bool _discordWarned;
+        private GUIStyle _measuring;
+
         private void OnGUI()
         {
+            // While mod performance is being measured with the menu closed, a small note says so.
+            if (PerfMonitor.Running && !Menu.IsOpen && Event.current.type == EventType.Repaint)
+            {
+                if (_measuring == null) _measuring = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontSize = Mathf.RoundToInt(14 * Mathf.Max(0.7f, Screen.height / 1080f)) };
+                _measuring.normal.textColor = new Color(1f, 0.76f, 0.43f, 0.85f);
+                GUI.Label(new Rect(Screen.width - 420, 8, 410, 30), "● Measuring mod performance (Mods › Performance)", _measuring);
+            }
             try { Menu.Draw(); }
             catch (Exception e) { Logger.LogWarning("Mods menu draw: " + e.Message); }
         }

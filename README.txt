@@ -15,6 +15,7 @@ If you want to see upcoming features early, join the [url=https://discord.gg/nom
 [*][b]Always the newest version[/b], checked on this site [i]and[/i] on Nexus Mods
 [*][b]Multiplayer that doesn't drop you[/b], with lobby badges, Match host and invite links
 [*][b]Profiles, save backups, mod settings and plain-words problem reports[/b] in one place
+[*][b]New: Performance page, My mods dashboard for mod authors, and Discord Rich Presence[/b]
 [/list]
 
 [line]
@@ -42,6 +43,19 @@ If you want to see upcoming features early, join the [url=https://discord.gg/nom
 [*][b]Export logs for mod devs[/b]: one zip on your Desktop with the BepInEx and Unity logs, every mod with its version and source, and recent errors. Your Windows user name is hidden.
 [*][b]Report a bug[/b] on any mod, straight to its Bugs page.
 [*][b]BepInEx is protected[/b]: its own parts can't be switched off, removed or updated from the menu, so one click can't break every mod.
+[*][b]Performance[/b]: press [b]Start measuring[/b], play for a few minutes, and see how long each mod takes every frame, its worst frame, and which mods were in each stutter. [b]Copy report[/b] puts it all on your clipboard for a bug report. It's off until you start it and stops by itself after 15 minutes.
+[/list]
+
+[size=5][b][color=#f5b54e]For mod authors: My mods[/color][/b][/size]
+[list]
+[*]A dashboard of [b]your own mods[/b] on this site and on Nexus Mods together: downloads, endorsements, what's new since you last looked and over the last week, with buttons to each mod's page and its Nexus Bugs tab.
+[*]It shows when you're signed in to this site, or when you put your author names in [b]Settings › Author › MyNames[/b]. Your website notifications (new bug reports and comments) are one click away.
+[/list]
+
+[size=5][b][color=#f5b54e]Discord[/color][/b][/size]
+[list]
+[*][b]Rich Presence[/b]: your Discord profile shows you playing Nomad Drive, how many mods you play with, and whether you're on the road, hosting or in a multiplayer game, with a [b]Get the mods[/b] button. Join codes are never shown.
+[*]It talks only to the Discord app on your PC, and every part of it can be switched off in [b]Settings › Discord[/b].
 [/list]
 
 [size=5][b][color=#f5b54e]Multiplayer that doesn't drop you[/color][/b][/size]
@@ -95,6 +109,19 @@ Does your mod only talk to other copies of itself, and keep working when other p
 [/spoiler]
 
 [spoiler=Recent updates]
+[size=3][b]1.17.0[/b][/size]
+[list]
+[*][b]Performance page[/b]: how long each mod takes every frame (its Update, LateUpdate, FixedUpdate, OnGUI and Harmony patches), its share of the frame, its worst frame and how many stutters it was in, plus a list of the stutters with the mods in each. Start, Stop, Reset and Copy report.
+[*][b]My mods[/b], a dashboard for mod authors: your mods on this site and on Nexus with downloads, endorsements, new since last time and this week.
+[*][b]Discord Rich Presence[/b]: Playing Nomad Drive, with your mod count, what you're doing and a Get the mods button (Settings › Discord).
+[/list]
+[size=3][b]1.16.4[/b][/size]
+[list]
+[*]No more freezes in the Mods menu: pictures on the Nexus pages are made away from the game's thread, one a frame, and shrunk to thumbnail size
+[*]Long descriptions and changelogs are measured once instead of twice every frame
+[*]Website installs check and unpack away from the game's thread (a big mod used to freeze the game for about two seconds)
+[*]The mod list re-reads a folder only when it changed (it used to list every file of every mod each second while the menu was open)
+[/list]
 [size=3][b]1.16.3[/b][/size]
 [list]
 [*][b]Check BepInEx is part of Nomad Mod Downloader now[/b], so you only need one app. The [b]Check BepInEx[/b] button opens it on its Check BepInEx page, and gets Nomad Mod Downloader from nomaddrivemods.online when you don't have it yet.

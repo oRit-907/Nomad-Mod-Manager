@@ -167,16 +167,37 @@ namespace NomadModManager
         // ------------------------------------------------------------------
         // Scan
 
+        private static HashSet<string> _loadedPaths;
+        private static int _loadedCount = -1;
+        private static readonly Dictionary<string, (DateTime Stamp, float When, List<string> Files)> FileCache =
+            new Dictionary<string, (DateTime, float, List<string>)>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Looks at every mod's files again, now (after installing or removing something).</summary>
+        public void RefreshNow()
+        {
+            ForgetFiles();
+            Refresh();
+        }
+
+        internal static void ForgetFiles() => FileCache.Clear();
+
         public void Refresh()
         {
             ReadDownloaderManifest();
             var pending = Pending.Read(GameRoot);
             var staged = Pending.StagedFiles(GameRoot).Select(Path.GetFullPath).ToList();
-            var loadedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            // 1.16.4: the loaded DLLs are listed again only when another one was loaded.
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            if (_loadedPaths == null || assemblies.Length != _loadedCount)
             {
-                try { if (!a.IsDynamic && !string.IsNullOrEmpty(a.Location)) loadedPaths.Add(Path.GetFullPath(a.Location)); } catch { }
+                _loadedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var a in assemblies)
+                {
+                    try { if (!a.IsDynamic && !string.IsNullOrEmpty(a.Location)) _loadedPaths.Add(Path.GetFullPath(a.Location)); } catch { }
+                }
+                _loadedCount = assemblies.Length;
             }
+            var loadedPaths = _loadedPaths;
 
             var list = new List<ModEntry>();
             if (!Directory.Exists(Paths.PluginPath)) { Mods = list; return; }
@@ -837,9 +858,17 @@ namespace NomadModManager
 
         private static List<string> SafeFiles(string dir)
         {
+            // 1.16.4: a folder is listed again only when it changed (or 15 seconds on), not every scan.
+            DateTime stamp;
+            try { stamp = Directory.GetLastWriteTimeUtc(dir); } catch { stamp = DateTime.MinValue; }
+            var now = UnityEngine.Time.realtimeSinceStartup;
+            if (FileCache.TryGetValue(dir, out var c) && c.Stamp == stamp && now - c.When < 15f) return c.Files;
+            List<string> list;
             // (not the Mods menu's own data folder: its browser's DLLs and the save backups aren't part of any mod)
-            try { return Pending.FilesOutsideData(Paths.GameRootPath, dir, "*").Select(Path.GetFullPath).ToList(); }
-            catch { return new List<string>(); }
+            try { list = Pending.FilesOutsideData(Paths.GameRootPath, dir, "*").Select(Path.GetFullPath).ToList(); }
+            catch { list = new List<string>(); }
+            FileCache[dir] = (stamp, now, list);
+            return list;
         }
 
         public static bool IsNewer(string latest, string current) => ModVersion.IsNewer(latest, current);

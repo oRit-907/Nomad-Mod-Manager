@@ -112,5 +112,49 @@ namespace NomadModManager
                 pin.Free();
             }
         }
+
+        /// <summary>
+        /// 1.16.4: decodes to bottom-up RGBA bytes, shrunk by halves until it is at most <paramref name="maxW"/> wide.
+        /// Touches no Unity object, so it can run away from the game's thread; the texture is made from it afterwards.
+        /// </summary>
+        public static byte[] DecodeRaw(byte[] data, int maxW, out int w, out int h)
+        {
+            w = h = 0;
+            if (!Load()) return null;
+            var pin = GCHandle.Alloc(data, GCHandleType.Pinned);
+            IntPtr pixels = IntPtr.Zero;
+            try
+            {
+                pixels = _decode(pin.AddrOfPinnedObject(), (UIntPtr)(ulong)data.Length, out w, out h);
+                if (pixels == IntPtr.Zero || w <= 0 || h <= 0 || w > 8192 || h > 8192) return null;
+                var stride = w * 4;
+                var raw = new byte[stride * h];
+                for (var y = 0; y < h; y++)
+                    Marshal.Copy(new IntPtr(pixels.ToInt64() + (long)y * stride), raw, (h - 1 - y) * stride, stride);
+                while (w > maxW && w >= 2 && h >= 2) raw = Half(raw, ref w, ref h);
+                return raw;
+            }
+            catch { return null; }
+            finally
+            {
+                if (pixels != IntPtr.Zero) try { _free(pixels); } catch { }
+                pin.Free();
+            }
+        }
+
+        /// <summary>Half the width and height, each pixel the average of four.</summary>
+        private static byte[] Half(byte[] src, ref int w, ref int h)
+        {
+            int nw = w / 2, nh = h / 2;
+            var dst = new byte[nw * nh * 4];
+            for (var y = 0; y < nh; y++)
+                for (var x = 0; x < nw; x++)
+                {
+                    int a = (2 * y * w + 2 * x) * 4, b = a + 4, c = a + w * 4, d = c + 4, o = (y * nw + x) * 4;
+                    for (var k = 0; k < 4; k++) dst[o + k] = (byte)((src[a + k] + src[b + k] + src[c + k] + src[d + k] + 2) >> 2);
+                }
+            w = nw; h = nh;
+            return dst;
+        }
     }
 }

@@ -219,17 +219,32 @@ namespace NomadModManager
 
         private static string ManifestPath => Path.Combine(Pending.Dir(Paths.GameRootPath), "community.json");
 
+        private static List<SiteInstall> _installedCache;
+        private static DateTime _installedStamp;
+        private static string _installedPath;
+
         public static List<SiteInstall> Installed()
         {
             try
             {
                 if (!File.Exists(ManifestPath)) return new List<SiteInstall>();
-                return (JObject.Parse(File.ReadAllText(ManifestPath))["Mods"] as JArray ?? new JArray()).Select(t => new SiteInstall
+                // 1.16.4: read again only when the file changed; callers get their own copies.
+                var stamp = File.GetLastWriteTimeUtc(ManifestPath);
+                if (_installedCache == null || stamp != _installedStamp || ManifestPath != _installedPath)
                 {
-                    Id = (int?)t["Id"] ?? 0, VersionId = (int?)t["VersionId"] ?? 0, Name = (string)t["Name"] ?? "", Author = (string)t["Author"] ?? "",
-                    Version = (string)t["Version"] ?? "", Files = (t["Files"] as JArray ?? new JArray()).Select(f => (string)f).Where(f => !string.IsNullOrEmpty(f)).Select(LoaderPaths.Here).ToList(),
-                    Sub = (bool?)t["Sub"] ?? false,
-                }).Where(m => m.Id > 0).ToList();
+                    _installedCache = (JObject.Parse(File.ReadAllText(ManifestPath))["Mods"] as JArray ?? new JArray()).Select(t => new SiteInstall
+                    {
+                        Id = (int?)t["Id"] ?? 0, VersionId = (int?)t["VersionId"] ?? 0, Name = (string)t["Name"] ?? "", Author = (string)t["Author"] ?? "",
+                        Version = (string)t["Version"] ?? "", Files = (t["Files"] as JArray ?? new JArray()).Select(f => (string)f).Where(f => !string.IsNullOrEmpty(f)).Select(LoaderPaths.Here).ToList(),
+                        Sub = (bool?)t["Sub"] ?? false,
+                    }).Where(m => m.Id > 0).ToList();
+                    _installedStamp = stamp;
+                    _installedPath = ManifestPath;
+                }
+                return _installedCache.Select(m => new SiteInstall
+                {
+                    Id = m.Id, VersionId = m.VersionId, Name = m.Name, Author = m.Author, Version = m.Version, Files = new List<string>(m.Files), Sub = m.Sub,
+                }).ToList();
             }
             catch { return new List<SiteInstall>(); }
         }
@@ -304,11 +319,17 @@ namespace NomadModManager
                 yield return null;
 
                 string result = null; var ok = false;
-                try
+                Status = "Installing…";
+                // 1.16.4: checked and unpacked away from the game's thread (a big mod used to freeze the game for about two seconds).
+                var job = System.Threading.Tasks.Task.Run(() =>
                 {
                     if (v.Sha256.Length == 64 && Sha256(tmp) != v.Sha256) throw new InvalidOperationException("The download doesn't match the file on the site (it may have been cut off). Try again.");
-                    Status = "Installing…";
-                    var restart = InstallFile(tmp, ext, d, v, sub);
+                    return InstallFile(tmp, ext, d, v, sub);
+                });
+                while (!job.IsCompleted) yield return null;
+                try
+                {
+                    var restart = job.GetAwaiter().GetResult();
                     ok = true;
                     result = restart ? $"{d.Mod.Name} v{v.Version.TrimStart('v', 'V')} is installed — it replaces files in use, so it switches over when you restart."
                                      : $"{d.Mod.Name} v{v.Version.TrimStart('v', 'V')} is installed.";
@@ -319,7 +340,7 @@ namespace NomadModManager
                     result = $"Couldn't install {d.Mod.Name}: {e.Message}";
                     ModManagerPlugin.Log.LogWarning(result + "\n" + e);
                 }
-                finally { TryDelete(tmp); }
+                finally { TryDelete(tmp); ModCatalog.ForgetFiles(); }
                 Progress = 1f;
                 done(ok, result);
             }

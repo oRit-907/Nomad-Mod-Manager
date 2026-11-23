@@ -181,7 +181,7 @@ namespace NomadModManager
             _browserInstalling = false;
             _browserPrompt = false;
             InGameBrowser.Close();
-            _cat.Refresh();
+            _cat.RefreshNow();
         }
 
         /// <summary>When the menu's browser can't be used: the mod's Nexus page in the player's own web browser.</summary>
@@ -445,7 +445,7 @@ namespace NomadModManager
                 try { staged = Community.InstallNexusFile(path, modId, file?.Id ?? fileId, name, author, version, original); }
                 catch (Exception ex) { staged = false; error = ex.Message; ModManagerPlugin.Log.LogWarning("Installing " + name + " from the browser: " + ex); }
                 try { if (File.Exists(path)) File.Delete(path); } catch { }
-                _cat.Refresh();
+                _cat.RefreshNow();
                 if (error != null) { _browserStatus = $"Couldn't install {name}: {error}"; _browserStatusGood = false; yield break; }
 
                 _browserDone++;

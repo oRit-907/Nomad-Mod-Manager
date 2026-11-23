@@ -32,7 +32,7 @@ namespace NomadModManager
             // "Using: Any ▸" cycles through the mods the listed games use.
             var mod = LobbyFilter.Mod;
             var label = mod.Length == 0 ? "Using: any mod ▸" : "Using: " + (mod.Length > 22 ? mod.Substring(0, 21) + "…" : mod) + " ▸";
-            var w = Mathf.Min(_smallBold.CalcSize(new GUIContent(label)).x + 30 * _s, r.xMax - x - 60 * _s);
+            var w = Mathf.Min(CS(_smallBold, new GUIContent(label)).x + 30 * _s, r.xMax - x - 60 * _s);
             if (w > 80 * _s && Pill(label, mod.Length > 0, w))
             {
                 var mods = LobbyFilter.ModsInList();

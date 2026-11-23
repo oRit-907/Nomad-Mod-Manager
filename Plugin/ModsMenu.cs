@@ -34,10 +34,13 @@ namespace NomadModManager
         private static readonly Color CInk = Hex(0x1E2230);
 
         // TabSite = mods from the community website (installed right here); TabBrowse = Nexus Mods (installed through the app).
-        private const int TabInstalled = 0, TabBrowse = 1, TabChanges = 2, TabProfiles = 3, TabMultiplayer = 4, TabActivity = 5, TabSite = 6, TabPacks = 7, TabSettings = 8;
+        private const int TabInstalled = 0, TabBrowse = 1, TabChanges = 2, TabProfiles = 3, TabMultiplayer = 4, TabActivity = 5, TabSite = 6, TabPacks = 7, TabSettings = 8, TabAuthor = 9, TabPerformance = 10;
         private static readonly int[] TabOrder = Edition.Nexus
-            ? new[] { TabBrowse, TabInstalled, TabProfiles, TabMultiplayer, TabChanges, TabActivity, TabSettings }   // Nexus edition: no website pages
-            : new[] { TabSite, TabPacks, TabBrowse, TabInstalled, TabProfiles, TabMultiplayer, TabChanges, TabActivity, TabSettings };
+            ? new[] { TabBrowse, TabInstalled, TabAuthor, TabProfiles, TabMultiplayer, TabChanges, TabActivity, TabPerformance, TabSettings }   // Nexus edition: no website pages
+            : new[] { TabSite, TabPacks, TabBrowse, TabInstalled, TabAuthor, TabProfiles, TabMultiplayer, TabChanges, TabActivity, TabPerformance, TabSettings };
+
+        /// <summary>Pages that only show for some players (1.17.0: My mods, for mod authors).</summary>
+        private static bool TabShown(int tab) => Array.IndexOf(TabOrder, tab) >= 0 && (tab != TabAuthor || AuthorStats.Visible);
 
         private readonly ModManagerPlugin _host;
         private readonly ModCatalog _cat;
@@ -177,7 +180,7 @@ namespace NomadModManager
             OpenedFromPause = false;
             _scrollY = 0;
             HookText();
-            _cat.Refresh();
+            _cat.RefreshNow();
             StartupLog.Refresh();
             _problems.Clear();
             FindGameArt(panel);
@@ -320,7 +323,12 @@ namespace NomadModManager
         private void NextTab(int d)
         {
             var i = Array.IndexOf(TabOrder, _tab);
-            ShowTab(TabOrder[(i + d + TabOrder.Length) % TabOrder.Length]);
+            for (var step = 0; step < TabOrder.Length; step++)
+            {
+                i = (i + d + TabOrder.Length) % TabOrder.Length;
+                if (TabShown(TabOrder[i])) break;
+            }
+            ShowTab(TabOrder[i]);
         }
 
         private void ShowTab(int tab)
@@ -333,8 +341,9 @@ namespace NomadModManager
             if (tab == TabBrowse && !_searchedOnce) RunSearch(false);
             if (tab == TabPacks && !_packsLoaded) LoadPacks();
             if (tab == TabSite && !_siteSearched) RunSiteSearch(false);
-            if (tab == TabInstalled) { _cat.Refresh(); StartupLog.Refresh(); _problems.Clear(); }
+            if (tab == TabInstalled) { _cat.RefreshNow(); StartupLog.Refresh(); _problems.Clear(); }
             if (tab == TabSettings) OpenOwnSettings();
+            if (tab == TabAuthor) OpenAuthor(false);
         }
 
         /// <summary>The game's IMGUI has no text fields (stripped), so typing comes from the Input System.</summary>
@@ -385,8 +394,8 @@ namespace NomadModManager
         public void CheckUpdates()
         {
             _checkedUpdates = true;
-            _cat.Refresh();
-            if (SiteAccount.Has) _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.Refresh()));
+            _cat.RefreshNow();
+            if (SiteAccount.Has) _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.RefreshNow()));
             var round = ++_checkRound;
             _checksLeft = 2;   // the website, Nexus (plus a second Nexus look-up the website's answer may need)
             void Done()
@@ -398,7 +407,7 @@ namespace NomadModManager
             _host.StartCoroutine(Community.Check(_cat.SiteIds.ToList(), mods =>
             {
                 foreach (var m in mods) _cat.SetSiteInfo(m);
-                _cat.Refresh();
+                _cat.RefreshNow();
                 // Website mods linked to a Nexus page the Nexus check didn't know about yet.
                 var more = _cat.NexusIds.Where(id => !_cat.KnowsNexus(id)).ToList();
                 if (more.Count > 0)
@@ -407,7 +416,7 @@ namespace NomadModManager
                     _host.StartCoroutine(Nexus.Lookup(more, list =>
                     {
                         foreach (var x in list) _cat.SetNexusInfo(x.Id, x.Version, x.Author, x.Name, x.Summary);
-                        _cat.Refresh();
+                        _cat.RefreshNow();
                         Done();
                     }));
                 }
@@ -419,7 +428,7 @@ namespace NomadModManager
                 _host.StartCoroutine(Nexus.Lookup(ids, mods =>
                 {
                     foreach (var m in mods) _cat.SetNexusInfo(m.Id, m.Version, m.Author, m.Name, m.Summary);
-                    _cat.Refresh();
+                    _cat.RefreshNow();
                     Done();
                 }));
             _host.StartCoroutine(SettleLater(round));
@@ -437,7 +446,7 @@ namespace NomadModManager
         private void SettleUpdates()
         {
             _cat.UpdatesChecked = true;
-            _cat.Refresh();
+            _cat.RefreshNow();
             var waiting = _cat.Mods.Where(m => m.UpdateAvailable && !m.UpdateStaged).ToList();
             if (waiting.Count == 0) return;
             var site = waiting.Count(m => m.UpdateFrom == Community.HostName);
@@ -469,7 +478,7 @@ namespace NomadModManager
                 _moreOnNexus = _fetched < total;
                 foreach (var m in list) _cat.SetNexusInfo(m.Id, m.Version, m.Author, m.Name, m.Summary);
                 _cat.LearnNames(list);
-                _cat.Refresh();
+                _cat.RefreshNow();
             }));
         }
 
@@ -507,6 +516,7 @@ namespace NomadModManager
         public void Draw()
         {
             _s = Mathf.Max(0.6f, Screen.height / 1080f * _host.Scale.Value);
+            if (_s != _memoScale) { _memoScale = _s; HeightMemo.Clear(); SizeMemo.Clear(); }
             long t0 = System.Diagnostics.Stopwatch.GetTimestamp(), t1 = t0;
             if (IsOpen)
             {
@@ -577,6 +587,8 @@ namespace NomadModManager
                     break;
                 case TabMultiplayer: DrawMultiplayer(inner); break;
                 case TabActivity: DrawActivity(inner); break;
+                case TabAuthor: DrawAuthor(inner); break;
+                case TabPerformance: DrawPerformance(inner); break;
                 default: DrawChanges(inner); break;
             }
         }
@@ -603,20 +615,22 @@ namespace NomadModManager
                 (TabPacks, "Mod packs"),
                 (TabBrowse, Edition.Nexus ? "Browse mods" : "Nexus mods"),
                 (TabInstalled, "Installed (" + _cat.Mods.Count(m => !m.IsSelf) + ")"),
+                (TabAuthor, "My mods"),
                 (TabProfiles, "Profiles"),
                 (TabMultiplayer, LobbyMods.Players.Any(p => p.Diff != null && !p.Diff.CanPlay) ? "Multiplayer (!)" : "Multiplayer"),
                 (TabChanges, restart + reload + held > 0 ? $"Changes ({restart + reload + held})" : "Changes"),
                 (TabActivity, "Activity"),
+                (TabPerformance, PerfMonitor.Running ? "Performance (on)" : "Performance"),
                 (TabSettings, "Settings")
             };
             // The pages and Back always fit above the status box: closer together on short screens.
-            var shown = items.Count(i => Array.IndexOf(TabOrder, i.Item1) >= 0);
+            var shown = items.Count(i => TabShown(i.Item1));
             var cardTop = Screen.height - 44 * _s - (restart + reload > 0 ? 184 : 124) * _s;
             var step = Mathf.Clamp((cardTop - 16 * _s - y - 50 * _s) / (shown + 0.1f), 36 * _s, 54 * _s);
             foreach (var (tab, label) in items)
             {
-                if (Array.IndexOf(TabOrder, tab) < 0) continue;   // not in this edition
-                var size = _nav.CalcSize(Lang.C(label));
+                if (!TabShown(tab)) continue;   // not in this edition (or not for this player)
+                var size = CS(_nav, Lang.C(label));
                 var ir = new Rect(r.center.x - size.x / 2, y, size.x, 50 * _s);
                 var hover = ir.Contains(Event.current.mousePosition);
                 Lbl(ir, label, Tint(_nav, _tab == tab || hover ? CAccent : CText));
@@ -626,7 +640,7 @@ namespace NomadModManager
             if (_padMode)
                 Lbl(new Rect(r.x, y - 6 * _s, r.width, 22 * _s), "LB / RB switch pages   ·   B back", Center(_small, CMuted));
             var back = OpenedFromMainMenu || OpenedFromPause ? "Back" : "Close";
-            var bs = _nav.CalcSize(Lang.C(back));
+            var bs = CS(_nav, Lang.C(back));
             var br = new Rect(r.center.x - bs.x / 2, y + 2 * _s, bs.x, 50 * _s);
             Lbl(br, back, Tint(_nav, br.Contains(Event.current.mousePosition) ? CAccent : CMuted));
             if (Hit(br)) { Close(); return; }
@@ -750,7 +764,7 @@ namespace NomadModManager
             foreach (var c in chips)
             {
                 var label = c == null ? "All (" + _results.Count + ")" : c + " (" + _results.Count(m => m.Category == c) + ")";
-                var w = _smallBold.CalcSize(Lang.C(label)).x + 30 * _s;
+                var w = CS(_smallBold, Lang.C(label)).x + 30 * _s;
                 if (cx + w > r.xMax) break;
                 var cr = new Rect(cx, y, w, 32 * _s);
                 var on = _category == c;
@@ -1015,7 +1029,7 @@ namespace NomadModManager
             var tx = rx;
             for (var t = 0; t < tabs.Length; t++)
             {
-                var tw = _bold.CalcSize(Lang.C(tabs[t])).x + 30 * _s;
+                var tw = CS(_bold, Lang.C(tabs[t])).x + 30 * _s;
                 if (Btn(new Rect(tx, ty, tw, 36 * _s), tabs[t], false, _nexusDetailTab == t)) { _nexusDetailTab = t; _nexusViewer = -1; _scrollY = 0; }
                 tx += tw + 8 * _s;
             }
@@ -1031,13 +1045,13 @@ namespace NomadModManager
             var view = new Rect(rx, ty + 48 * _s, rw, r.yMax - ty - 48 * _s);
             var wrapW = rw - 30 * _s;
             var desc = d.Description.Length > 0 ? d.Description : (m.Summary.Length > 0 ? m.Summary : "No description.");
-            var descH = _wrap.CalcHeight(Lang.C(desc), wrapW);
+            var descH = CH(_wrap, Lang.C(desc), wrapW);
             var files = d.Files.Where(f => f.IsCurrent).Concat(d.Files.Where(f => !f.IsCurrent).Take(6)).ToList();
             var fileH = new List<float>();
             foreach (var f in files)
             {
                 var text = FileText(f);
-                fileH.Add(64 * _s + (text.Length > 0 ? _wrapSmall.CalcHeight(Lang.C(text), wrapW - 200 * _s) + 8 * _s : 0));
+                fileH.Add(64 * _s + (text.Length > 0 ? CH(_wrapSmall, Lang.C(text), wrapW - 200 * _s) + 8 * _s : 0));
             }
             var total = descH + 60 * _s + fileH.Sum() + files.Count * 10 * _s + 20 * _s;
             var inner = BeginScroll(view, total);
@@ -1272,7 +1286,7 @@ namespace NomadModManager
             if (_expanded.Contains(m.Rel))
             {
                 var probs = ProblemsOf(m);
-                if (probs.Count > 0) h += _wrapSmall.CalcHeight(Lang.C(ProblemText(probs)), width - 40 * _s) + 18 * _s;
+                if (probs.Count > 0) h += CH(_wrapSmall, Lang.C(ProblemText(probs)), width - 40 * _s) + 18 * _s;
             }
             return h;
         }
@@ -1713,7 +1727,7 @@ namespace NomadModManager
             SaveBackups.Create($"before using the profile \"{p.Name}\"", true);
             Activity.Add($"Used the profile \"{p.Name}\"");
             var (changed, missing) = Profiles.Apply(p, _cat);
-            _cat.Refresh();
+            _cat.RefreshNow();
             var restart = _cat.RestartItems;
             Toast(changed == 0 ? $"\"{p.Name}\" was already in use." : $"Switched to \"{p.Name}\"" + (_cat.ReloadItems > 0 ? " — press Reload to apply." : restart > 0 ? " — some changes apply when you restart." : "."), true);
             var ids = missing.Where(x => x.NexusId > 0).Select(x => x.NexusId).ToList();
@@ -1739,7 +1753,7 @@ namespace NomadModManager
             var faded = m.State == ModState.Disabled || m.State == ModState.WillRemove;
             var name = Tint(_bold, faded ? CMuted : CText);
             Lbl(new Rect(r.x + 20 * _s, r.y + 10 * _s, r.width * 0.5f, 28 * _s), m.Name, name);
-            var nw = name.CalcSize(Lang.C(m.Name)).x;
+            var nw = CS(name, Lang.C(m.Name)).x;
             if (m.Version.Length > 0) Lbl(new Rect(r.x + 30 * _s + nw, r.y + 13 * _s, 140 * _s, 24 * _s), "v" + m.Version.TrimStart('v'), Tint(_small, CMuted));
 
             // An X on mods that change multiplayer: they have to match the host, and in an online game they
@@ -1748,7 +1762,7 @@ namespace NomadModManager
             var xHover = false;
             if (netMod)
             {
-                var vw = m.Version.Length > 0 ? _small.CalcSize(Lang.C("v" + m.Version.TrimStart('v'))).x + 12 * _s : 0;
+                var vw = m.Version.Length > 0 ? CS(_small, Lang.C("v" + m.Version.TrimStart('v'))).x + 12 * _s : 0;
                 var xr = new Rect(r.x + 30 * _s + nw + vw, r.y + 13 * _s, 24 * _s, 24 * _s);
                 Fill(xr, CBad, 6 * _s);
                 Lbl(xr, "X", Center(_smallBold, Color.white));
@@ -1771,7 +1785,7 @@ namespace NomadModManager
             else if (m.UpdateStaged) line2.Add(m.LiveLater && !_cat.OnlineHold(m) ? (_host.AtMainMenu ? "updating…" : "press Reload to update") : m.LiveLater ? "updates back at the main menu (multiplayer mod)" : "update applies on restart");
             if (problem != null && !(problem.Blocking && m.State == ModState.NotLoaded)) line2.Add(problem.Title);
             else if (problem == null && m.Note.Length > 0 && m.State != ModState.Running && m.State != ModState.Settling) line2.Add(m.Note);
-            var statusW = _smallBold.CalcSize(Lang.C(label ?? "")).x;
+            var statusW = CS(_smallBold, Lang.C(label ?? "")).x;
             if (label != null) Lbl(new Rect(r.x + 20 * _s, r.y + 42 * _s, statusW + 4, 24 * _s), label, Tint(_smallBold, color));
             var line2R = new Rect(r.x + 20 * _s + (label != null ? statusW + 12 * _s : 0), r.y + 42 * _s, r.width * 0.5f - statusW, 24 * _s);
             if (line2.Count > 0)
@@ -1838,7 +1852,7 @@ namespace NomadModManager
             if (problem != null)
             {
                 var (fixLabel, fix) = FixFor(m, problem);
-                if (fixLabel != null && B(fixLabel, true, Mathf.Max(100, _bold.CalcSize(Lang.C(fixLabel)).x / _s + 30))) fix();
+                if (fixLabel != null && B(fixLabel, true, Mathf.Max(100, CS(_bold, Lang.C(fixLabel)).x / _s + 30))) fix();
                 if (B(open ? "Hide" : "Why?", false, 80)) { if (open) _expanded.Remove(m.Rel); else _expanded.Add(m.Rel); }
             }
             if (HasSettings(m) && m.State != ModState.WillRemove && B("Settings", false, 110)) OpenSettings(m);
@@ -1969,7 +1983,7 @@ namespace NomadModManager
             var vx = r.x;
             for (var i = 0; i < views.Length; i++)
             {
-                var w = _bold.CalcSize(Lang.C(views[i])).x + 40 * _s;
+                var w = CS(_bold, Lang.C(views[i])).x + 40 * _s;
                 if (Btn(new Rect(vx, r.y + 108 * _s, w, 40 * _s), views[i], _mpView == i)) { _mpView = i; _scrollY = 0; }
                 vx += w + 8 * _s;
             }
@@ -1979,7 +1993,7 @@ namespace NomadModManager
             if (SafeJoin.Engaged && SafeJoin.PausedMods.Count > 0)
             {
                 var note = (SafeJoin.HostUnknown ? "Playing with a host without mods. " : "") + "Paused while you're in this game, so you don't get dropped: " + string.Join(", ", SafeJoin.PausedMods.ToArray()) + ". They come back when you leave.";
-                var nh = _wrapSmall.CalcHeight(Lang.C(note), r.width - 24 * _s) + 16 * _s;
+                var nh = CH(_wrapSmall, Lang.C(note), r.width - 24 * _s) + 16 * _s;
                 Fill(new Rect(r.x, r.y + top - 6 * _s, r.width, nh), CCard, 10 * _s);
                 Lbl(new Rect(r.x + 12 * _s, r.y + top + 2 * _s, r.width - 24 * _s, nh), note, Tint(_wrapSmall, CGood));
                 top += nh + 10 * _s;
@@ -2065,11 +2079,11 @@ namespace NomadModManager
             var y = r.y;
             Lbl(new Rect(r.x, y, r.width, 30 * _s), d.Title, Tint(_bold, CWarn)); y += 34 * _s;
             Lbl(new Rect(r.x, y, r.width, 24 * _s), $"{d.When:HH:mm} · joining {d.Host} · connected for {Mathf.RoundToInt(d.Seconds)} s", Tint(_small, CMuted)); y += 30 * _s;
-            var h = _wrap.CalcHeight(Lang.C(d.Why), r.width);
+            var h = CH(_wrap, Lang.C(d.Why), r.width);
             Lbl(new Rect(r.x, y, r.width, h + 4), d.Why, _wrap); y += h + 14 * _s;
             foreach (var f in d.Fixes)
             {
-                var fh = _wrapSmall.CalcHeight(Lang.C(f), r.width - 24 * _s);
+                var fh = CH(_wrapSmall, Lang.C(f), r.width - 24 * _s);
                 Fill(new Rect(r.x, y + 8 * _s, 8 * _s, 8 * _s), CAccent, 4 * _s);
                 Lbl(new Rect(r.x + 20 * _s, y, r.width - 24 * _s, fh + 4), f, _wrapSmall); y += fh + 10 * _s;
             }
@@ -2158,7 +2172,7 @@ namespace NomadModManager
         {
             var h = 64 * _s;
             if (note != null || d == null || d.Same) return h + 30 * _s;
-            foreach (var t in DiffLines(d)) h += _wrapSmall.CalcHeight(Lang.C(t.Text), w - 240 * _s) + 18 * _s;
+            foreach (var t in DiffLines(d)) h += CH(_wrapSmall, Lang.C(t.Text), w - 240 * _s) + 18 * _s;
             return h + 10 * _s;
         }
 
@@ -2186,7 +2200,7 @@ namespace NomadModManager
             var y = r.y + 54 * _s;
             foreach (var (text, kind) in DiffLines(d))
             {
-                var h = _wrapSmall.CalcHeight(Lang.C(text), r.width - 280 * _s);
+                var h = CH(_wrapSmall, Lang.C(text), r.width - 280 * _s);
                 Lbl(new Rect(r.x + 20 * _s, y, r.width - 280 * _s, h + 4), text, Tint(_wrapSmall, kind == 3 ? CMuted : CWarn));
                 var b = new Rect(r.xMax - 244 * _s, y - 4 * _s, 230 * _s, 38 * _s);
                 if (kind == 0)
@@ -2216,7 +2230,7 @@ namespace NomadModManager
             var x = r.x;
             for (var i = 0; i < tabs.Length; i++)
             {
-                var w = _bold.CalcSize(Lang.C(tabs[i])).x + 40 * _s;
+                var w = CS(_bold, Lang.C(tabs[i])).x + 40 * _s;
                 if (Btn(new Rect(x, r.y + 48 * _s, w, 40 * _s), tabs[i], _activityView == i)) { _activityView = i; _scrollY = 0; }
                 x += w + 8 * _s;
             }
@@ -2256,7 +2270,7 @@ namespace NomadModManager
         private void DrawErrors(Rect view, List<SessionErrors.Entry> errors)
         {
             if (errors.Count == 0) { StatusText(new Rect(view.x, view.y + 8 * _s, view.width, 26 * _s), "No errors or warnings since the game started.", CGood); return; }
-            var heights = errors.Select(e => _wrapSmall.CalcHeight(Lang.C(e.Text), view.width - 60 * _s) + 52 * _s).ToList();
+            var heights = errors.Select(e => CH(_wrapSmall, Lang.C(e.Text), view.width - 60 * _s) + 52 * _s).ToList();
             var inner = BeginScroll(new Rect(view.x, view.y, view.width, view.height - 54 * _s), heights.Sum() + errors.Count * 8 * _s);
             var y = inner.y;
             for (var i = 0; i < errors.Count; i++)
@@ -2283,7 +2297,7 @@ namespace NomadModManager
         /// <summary>A label, then − value +. Returns -1, 0 or 1.</summary>
         private int Stepper(ref float x, float y, string label, string value)
         {
-            var lw = _small.CalcSize(Lang.C(label)).x + 12 * _s;
+            var lw = CS(_small, Lang.C(label)).x + 12 * _s;
             Lbl(new Rect(x, y, lw, 40 * _s), label, new GUIStyle(Tint(_small, CText)) { alignment = TextAnchor.MiddleLeft });
             x += lw;
             var d = 0;
@@ -2303,7 +2317,7 @@ namespace NomadModManager
             foreach (var b in backups) if (b.Auto) autos++;
             var sureAll = _confirmDelete == "*" && Time.unscaledTime < _confirmUntil;
             var delText = sureAll ? "Sure?" : "Delete automatic backups";
-            var delW = autos > 0 ? Mathf.Max(_bold.CalcSize(Lang.C("Delete automatic backups")).x + 40 * _s, 160 * _s) : 0;
+            var delW = autos > 0 ? Mathf.Max(CS(_bold, Lang.C("Delete automatic backups")).x + 40 * _s, 160 * _s) : 0;
             var right = 270 * _s + (autos > 0 ? delW + 10 * _s : 0);
             Lbl(new Rect(view.x, view.y, view.width - right - 20 * _s, 64 * _s),
                 Lang.T("Your saves are backed up before this menu changes mods, when a save has changed since the last backup. A backup holds only the saves that changed.")
@@ -2328,7 +2342,7 @@ namespace NomadModManager
             var cy = view.y + 72 * _s;
             var x = view.x;
             var on = SaveBackups.Automatic;
-            var tw = _small.CalcSize(Lang.C("Back up automatically")).x + 70 * _s;
+            var tw = CS(_small, Lang.C("Back up automatically")).x + 70 * _s;
             if (Toggle(new Rect(x, cy + 5 * _s, tw, 30 * _s), on, "Back up automatically"))
             { _host.BackupsOn.Value = !on; _host.Config.Save(); }
             x += tw + 36 * _s;
@@ -2411,7 +2425,7 @@ namespace NomadModManager
             for (var i = _toasts.Count - 1; i >= 0; i--)
             {
                 var (text, good, until) = _toasts[i];
-                var size = _body.CalcSize(Lang.C(text));
+                var size = CS(_body, Lang.C(text));
                 var w = Mathf.Min(size.x + 56 * _s, Screen.width - 40);
                 var r = new Rect((Screen.width - w) / 2, y - 52 * _s, w, 48 * _s);
                 var a = Mathf.Clamp01((until - Time.unscaledTime) / 0.4f);
@@ -2762,6 +2776,27 @@ namespace NomadModManager
             _shade.Apply();
             UnityEngine.Object.DontDestroyOnLoad(_shade);
             return _shade;
+        }
+
+        // 1.16.4: text is measured once, not every frame (long descriptions and changelogs were measured twice a frame).
+        private static readonly Dictionary<(GUIStyle, string, int), float> HeightMemo = new Dictionary<(GUIStyle, string, int), float>();
+        private static readonly Dictionary<(GUIStyle, string), Vector2> SizeMemo = new Dictionary<(GUIStyle, string), Vector2>();
+        private static float _memoScale = -1f;
+
+        private static float CH(GUIStyle st, GUIContent c, float w)
+        {
+            var key = (st, c.text ?? "", Mathf.RoundToInt(w));
+            if (HeightMemo.TryGetValue(key, out var h)) return h;
+            if (HeightMemo.Count > 4000) HeightMemo.Clear();
+            return HeightMemo[key] = st.CalcHeight(c, w);
+        }
+
+        private static Vector2 CS(GUIStyle st, GUIContent c)
+        {
+            var key = (st, c.text ?? "");
+            if (SizeMemo.TryGetValue(key, out var v)) return v;
+            if (SizeMemo.Count > 4000) SizeMemo.Clear();
+            return SizeMemo[key] = st.CalcSize(c);
         }
 
         private static Color Hex(int rgb) => new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);

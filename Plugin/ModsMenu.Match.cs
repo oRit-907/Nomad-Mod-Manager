@@ -26,7 +26,7 @@ namespace NomadModManager
                 if (good) { ok++; if (msg != null && msg.Contains("restart")) restart = true; }
                 else { failed++; ModManagerPlugin.Log?.LogWarning($"Couldn't get {w.Name} v{w.Version}: {msg}"); }
             }
-            _cat.Refresh();
+            _cat.RefreshNow();
             var text = $"Got {ok} mod(s) from {Community.HostName} on the exact version" + (failed > 0 ? $"; {failed} failed (see Activity)" : "") + ".";
             if (restart) text += " Some replace files in use: restart the game to switch over.";
             else if (_cat.ReloadItems > 0 && !_host.AtMainMenu) text += " Press Reload to apply.";

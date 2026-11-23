@@ -83,7 +83,7 @@ namespace NomadModManager
                          : $"Unsubscribed from {p.Name}. Its mods are removed, except ones you subscribed to some other way.", true);
                 // Its mods from Nexus: the missing ones are installed from Nexus, one after another.
                 if (on) InstallNexusRequirements(p.Nexus.Where(n => !_cat.IsInstalled(n.Id)).Select(n => n.Id).ToList(), p.Name);
-                _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.Refresh(), force: true));
+                _host.StartCoroutine(Community.SyncSubscriptions((msg, good) => Toast(msg, good), () => _cat.RefreshNow(), force: true));
             }));
         }
 
@@ -252,7 +252,7 @@ namespace NomadModManager
             var tx = r.x;
             for (var i = 0; i < 2; i++)
             {
-                var w = _bold.CalcSize(Lang.C(tabs[i])).x + 30 * _s;
+                var w = CS(_bold, Lang.C(tabs[i])).x + 30 * _s;
                 if (Btn(new Rect(tx, y, w, 38 * _s), tabs[i], false, _packsMineView == (i == 1)))
                 {
                     if (i == 1 && !SiteAccount.Has) NeedAccount("make packs");
@@ -432,7 +432,7 @@ namespace NomadModManager
             var installed = _packEditing ? InstalledSiteMods().Where(i => p.ModList.All(m => m.Id != i.Id)).ToList() : new List<SiteInstall>();
             const float rowH = 66, gap = 8;
             var desc = p.Description.Trim();
-            var descH = desc.Length > 0 && !_packEditing ? Mathf.Min(_wrapSmall.CalcHeight(Lang.C(desc), r.width - 30 * _s), 400 * _s) + 20 * _s : 0;
+            var descH = desc.Length > 0 && !_packEditing ? Mathf.Min(CH(_wrapSmall, Lang.C(desc), r.width - 30 * _s), 400 * _s) + 20 * _s : 0;
             var nexusInstalled = _packEditing
                 ? _cat.Mods.Where(m => m.NexusId > 0 && m.SiteId == 0 && !m.IsSelf && !m.IsLoader && m.NexusId != Nexus.DownloaderModId && p.Nexus.All(n => n.Id != m.NexusId))
                     .GroupBy(m => m.NexusId).Select(g => g.First()).ToList()
