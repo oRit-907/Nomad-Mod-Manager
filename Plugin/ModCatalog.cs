@@ -76,7 +76,7 @@ namespace NomadModManager
         {
             n = (n ?? "").Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
             return n.IndexOf("BepInExPack", StringComparison.OrdinalIgnoreCase) >= 0
-                   || n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase) && n.IndexOf("Pack", StringComparison.OrdinalIgnoreCase) >= 0
+                   || n.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase)   // BepInEx itself and its add-ons (packs, BepInEx6Compat and the like)
                    || n.StartsWith("IgniteLoader", StringComparison.OrdinalIgnoreCase);   // Ignite Loader too: set up by Nomad Mod Downloader
         }
 
